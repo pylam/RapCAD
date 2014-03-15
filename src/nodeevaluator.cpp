@@ -29,10 +29,20 @@
 #include "cgalexplorer.h"
 #include "cgalprimitive.h"
 #include "cgalfragment.h"
+#include "cgalcache.h"
 #endif
 
 NodeEvaluator::NodeEvaluator(QTextStream& s) : output(s)
 {
+	manager=CacheManager::getInstance();
+	if(!manager->getCache()) {
+#if USE_CGAL
+		Cache* c=new CGALCache();
+#else
+		Cache* c=new Cache();
+#endif
+		manager->setCache(c);
+	}
 }
 
 Primitive* NodeEvaluator::createPrimitive()
@@ -46,15 +56,17 @@ Primitive* NodeEvaluator::createPrimitive()
 
 void NodeEvaluator::visit(PrimitiveNode* n)
 {
-	Primitive* cp=createPrimitive();
-
+	Cache* ch=manager->getCache();
 	Primitive* pr=n->getPrimitive();
 	foreach(Polygon* p, pr->getPolygons()) {
-		cp->createPolygon();
 		foreach(Point pt,p->getPoints()) {
-			cp->appendVertex(pt);
+			ch->cachePoint(pt);
 		}
+		ch->cachePolygon();
 	}
+	ch->cachePrimitive();
+
+	Primitive* cp=ch->fetchPrimitive();
 	result=cp;
 }
 

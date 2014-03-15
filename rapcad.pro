@@ -302,7 +302,9 @@ SOURCES += \
 	src/node/radialsnode.cpp \
 	src/module/volumesmodule.cpp \
 	src/node/volumesnode.cpp \
-	src/cgalvolume.cpp
+	src/cgalvolume.cpp \
+	src/cachemanager.cpp \
+	src/cgalcache.cpp
 
 HEADERS  += \
 	src/mainwindow.h \
@@ -514,7 +516,10 @@ HEADERS  += \
 	src/node/radialsnode.h \
 	src/module/volumesmodule.h \
 	src/node/volumesnode.h \
-	src/cgalvolume.h
+	src/cgalvolume.h \
+	src/cachemanager.h \
+	src/cache.h \
+	src/cgalcache.h
 
 FORMS += \
 	src/mainwindow.ui \

@@ -62,6 +62,7 @@ public:
 	void appendChild(Primitive*);
 	CGAL::Circle3 getRadius();
 	CGALVolume getVolume();
+	void appendPolygon(CGALPolygon*);
 private:
 	void init();
 	void buildPrimitive();

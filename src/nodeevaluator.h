@@ -22,6 +22,7 @@
 #include <QString>
 #include <QTextStream>
 #include "primitive.h"
+#include "cachemanager.h"
 #include "nodevisitor.h"
 #include "node/primitivenode.h"
 #include "node/polylinenode.h"
@@ -101,6 +102,7 @@ private:
 	Primitive* createPrimitive();
 	Primitive* result;
 	QTextStream& output;
+	CacheManager* manager;
 };
 
 #endif // NODEEVALUATOR_H

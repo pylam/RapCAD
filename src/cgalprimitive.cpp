@@ -105,6 +105,11 @@ Polygon* CGALPrimitive::createPolygon()
 	return pg;
 }
 
+void CGALPrimitive::appendPolygon(CGALPolygon* pg)
+{
+	polygons.append(pg);
+}
+
 void CGALPrimitive::appendVertex(Point pt)
 {
 	decimal x,y,z;
