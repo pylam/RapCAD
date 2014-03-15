@@ -1,3 +1,6 @@
+branches:
+  except:
+    - cgal-cache
 language: cpp
 compiler:
   - gcc
