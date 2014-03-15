@@ -7,6 +7,7 @@
 #include "cgal.h"
 #include "cgalpolygon.h"
 #include "cgalprimitive.h"
+#include "onceonly.h"
 
 class CGALCache : public Cache
 {
@@ -33,20 +34,52 @@ private:
 	CGALPrimitive* primitive;
 };
 
-inline uint qHash(const QList<uint>& h,uint seed)
+inline static QString print(QList<uint> l)
 {
-	uint k;
-	foreach(uint i,h)
-	k^=i;
-	return k^seed;
+	QString result;
+	OnceOnly first;
+	foreach(uint i,l) {
+		if(!first())
+			result.append(",");
+		result.append(QString().setNum(i));
+	}
+	/*result.append(" key: ");
+	uint k = qHash(l);
+	result.append(QString().setNum(k));*/
+	return result;
 }
 
 template <class T>
-inline uint qHash(const QList<T>& h,uint seed)
+inline static QString print(QList<T> l)
 {
-	uint k;
-	foreach(T i,h)
-	k=qHash(k,seed)^qHash(i,seed);
-	return k;
+	QString result;
+	foreach(T i,l) {
+		result.append("[");
+		result.append(print(i));
+		result.append("]");
+	}
+	/*result.append(" key: ");
+	uint k = qHash(l);
+	result.append(QString().setNum(k));*/
+	return result;
+}
+/*
+inline uint qHash(const QList<uint>& h,uint seed)
+{
+	//uint k;
+	//foreach(uint i,h)
+	//	k^=i;
+	//return k^seed;
+	return qHash(print(h));
+}
+*/
+template <class T>
+inline uint qHash(const QList<T>& h/*,uint seed*/)
+{
+	//uint k;
+	//foreach(T i,h)
+	//	k=qHash(k/*,seed*/)^qHash(i/*,seed*/);
+	//return k;
+	return qHash(print(h));
 }
 #endif // CGALCACHE_H

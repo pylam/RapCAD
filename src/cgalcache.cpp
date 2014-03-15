@@ -1,4 +1,5 @@
 #include "cgalcache.h"
+#include <QDebug>
 
 CGALCache::CGALCache()
 {
@@ -33,6 +34,10 @@ void CGALCache::cachePoint(CGAL::FT& x,CGAL::FT& y,CGAL::FT& z)
 	if(!allPoints.contains(values)) {
 		CGAL::Point3 p(x,y,z);
 		allPoints.insert(values,p);
+#if Q_DEBUG
+	} else {
+		qDebug() << "Point cache hit.";
+#endif
 	}
 
 	points.append(values);
@@ -49,6 +54,10 @@ void CGALCache::cachePolygon()
 			pg->append(allPoints.value(ip));
 
 		allPolygons.insert(points,pg);
+#if Q_DEBUG
+	} else {
+		qDebug() << "Polygon cache hit.";
+#endif
 	}
 
 	polygons.append(points);
@@ -60,16 +69,24 @@ void CGALCache::cachePrimitive()
 {
 	if(!allPrimitives.contains(polygons)) {
 		CGALPrimitive* pr=new CGALPrimitive();
-		foreach(i_Polygon ip, polygons)
-			pr->appendPolygon(allPolygons.value(ip));
+		foreach(i_Polygon ip, polygons) {
+			CGALPolygon* pg=allPolygons.value(ip);
+			if(pg)
+				pr->appendPolygon(pg);
+		}
 
 		allPrimitives.insert(polygons,pr);
 
 		primitive=pr;
 	} else {
+#if Q_DEBUG
+		qDebug() << "Primitive cache hit.";
+#endif
 		CGALPrimitive* pr=allPrimitives.value(polygons);
 		primitive=static_cast<CGALPrimitive*>(pr->copy());
 	}
+
+	polygons.clear();
 }
 
 Primitive* CGALCache::fetchPrimitive()
