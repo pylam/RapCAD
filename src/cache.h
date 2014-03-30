@@ -1,7 +1,8 @@
 #ifndef CACHE_H
 #define CACHE_H
 
-#include <QList>
+#include <QtGlobal>
+#include <QVector>
 #include <QHash>
 #include "primitive.h"
 
@@ -16,32 +17,43 @@ public:
 	Primitive* fetchPrimitive();
 	void cacheReset();
 private:
-	QList<decimal> allValues;
-	typedef QList<uint> i_Point;
+	typedef QVector<decimal> i_Point;
 	i_Point values;
-	typedef QList<i_Point> i_Polygon;
+	typedef QVector<i_Point> i_Polygon;
 	i_Polygon points;
-	typedef QList<i_Polygon> i_Primitive;
+	typedef QVector<i_Polygon> i_Primitive;
 	i_Primitive polygons;
 	QHash<i_Primitive,Primitive*> allPrimitives;
 };
 
-inline uint qHash(const QList<uint>& l,uint seed)
+#if (QT_VERSION < QT_VERSION_CHECK(5, 3, 0))
+static inline uint hash(const uchar *p, int len, uint seed) Q_DECL_NOTHROW
 {
-	uint hash = 17;
-	foreach(uint i,l)
-		hash *= 31 + i;
+	uint h = seed;
+	for (int i = 0; i < len; ++i)
+		h = 31 * h + p[i];
 
-	return hash+seed;
+	return h;
 }
 
-template <class T>
-inline uint qHash(const QList<T>& l,uint seed)
-{
-	uint hash = 17; //Magic fairy dust (should be prime)
-	foreach(T i,l)
-		hash *= 31 + qHash(i,seed);
+/*! \relates QHash
+	\since 5.3
 
-	return hash+seed;
+	Returns the hash value for the \a key, using \a seed to seed the calculation.
+*/
+inline uint qHash(double key, uint seed) Q_DECL_NOTHROW
+{
+	return key != 0.0  ? hash(reinterpret_cast<const uchar *>(&key), sizeof(key), seed) : seed ;
+}
+#endif
+
+template <class T>
+inline uint qHash(const QVector<T>& l,uint seed)
+{
+	uint h = seed;
+	foreach(T i,l)
+		h = 31 * h + qHash(i,seed);
+
+	return h;
 }
 #endif // CACHE_H

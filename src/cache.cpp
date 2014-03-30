@@ -4,22 +4,13 @@ Cache::Cache()
 {
 }
 
-void Cache::cacheValue(const decimal& n)
-{
-	if(!allValues.contains(n)) {
-		allValues.append(n);
-	}
-	uint k=allValues.indexOf(n);
-	values.append(k);
-}
-
 void Cache::cachePoint(const Point& pt)
 {
 	decimal x,y,z;
 	pt.getXYZ(x,y,z);
-	cacheValue(x);
-	cacheValue(y);
-	cacheValue(z);
+	values.append(x);
+	values.append(y);
+	values.append(z);
 
 	points.append(values);
 	values.clear();
