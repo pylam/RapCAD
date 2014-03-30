@@ -1,11 +1,10 @@
-#include "cgalcache.h"
-#include <QDebug>
+#include "cache.h"
 
-CGALCache::CGALCache()
+Cache::Cache()
 {
 }
 
-void CGALCache::cacheValue(const decimal& n)
+void Cache::cacheValue(const decimal& n)
 {
 	if(!allValues.contains(n)) {
 		allValues.append(n);
@@ -14,7 +13,7 @@ void CGALCache::cacheValue(const decimal& n)
 	values.append(k);
 }
 
-void CGALCache::cachePoint(const Point& pt)
+void Cache::cachePoint(const Point& pt)
 {
 	decimal x,y,z;
 	pt.getXYZ(x,y,z);
@@ -26,26 +25,26 @@ void CGALCache::cachePoint(const Point& pt)
 	values.clear();
 }
 
-void CGALCache::cachePolygon()
+void Cache::cachePolygon()
 {
 	polygons.append(points);
 	points.clear();
 }
 
-void CGALCache::cacheReset()
+void Cache::cacheReset()
 {
 	values.clear();
 	points.clear();
 	polygons.clear();
 }
 
-void CGALCache::cachePrimitive(Primitive* pr)
+void Cache::cachePrimitive(Primitive* pr)
 {
 	allPrimitives.insert(polygons,pr->copy());
 	polygons.clear();
 }
 
-Primitive* CGALCache::fetchPrimitive()
+Primitive* Cache::fetchPrimitive()
 {
 	if(allPrimitives.contains(polygons)) {
 		Primitive* pr=allPrimitives.value(polygons);

@@ -304,7 +304,7 @@ SOURCES += \
 	src/node/volumesnode.cpp \
 	src/cgalvolume.cpp \
 	src/cachemanager.cpp \
-	src/cgalcache.cpp
+	src/cache.cpp
 
 HEADERS  += \
 	src/mainwindow.h \
@@ -518,8 +518,7 @@ HEADERS  += \
 	src/node/volumesnode.h \
 	src/cgalvolume.h \
 	src/cachemanager.h \
-	src/cache.h \
-	src/cgalcache.h
+	src/cache.h
 
 FORMS += \
 	src/mainwindow.ui \

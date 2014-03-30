@@ -23,24 +23,21 @@
 #include "decimal.h"
 #include "polyhedron.h"
 #include "simpletextbuilder.h"
+#include "cache.h"
 
 #if USE_CGAL
 #include "cgalimport.h"
 #include "cgalexplorer.h"
 #include "cgalprimitive.h"
 #include "cgalfragment.h"
-#include "cgalcache.h"
+
 #endif
 
 NodeEvaluator::NodeEvaluator(QTextStream& s) : output(s)
 {
 	manager=CacheManager::getInstance();
 	if(!manager->getCache()) {
-#if USE_CGAL
-		Cache* c=new CGALCache();
-#else
 		Cache* c=new Cache();
-#endif
 		manager->setCache(c);
 	}
 }
