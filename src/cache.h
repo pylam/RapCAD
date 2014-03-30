@@ -6,12 +6,11 @@
 class Cache
 {
 public:
-	virtual void cachePrimitive() {}
+	virtual void cachePrimitive(Primitive*) {}
 	virtual void cachePolygon() {}
-	virtual void cachePoint(Point) {}
-	virtual Primitive* fetchPrimitive() {
-		return NULL;
-	}
+	virtual void cachePoint(const Point&) {}
+	virtual Primitive* fetchPrimitive() { return NULL; }
+	virtual void cacheReset() {}
 };
 
 #endif // CACHE_H

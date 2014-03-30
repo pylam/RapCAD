@@ -5,7 +5,7 @@ CGALCache::CGALCache()
 {
 }
 
-void CGALCache::cacheValue(CGAL::FT& n)
+void CGALCache::cacheValue(const decimal& n)
 {
 	if(!allValues.contains(n)) {
 		allValues.append(n);
@@ -14,82 +14,42 @@ void CGALCache::cacheValue(CGAL::FT& n)
 	values.append(k);
 }
 
-void CGALCache::cachePoint(Point pt)
+void CGALCache::cachePoint(const Point& pt)
 {
 	decimal x,y,z;
 	pt.getXYZ(x,y,z);
-
-	FT fx(x);
-	FT fy(y);
-	FT fz(z);
-	cacheValue(fx);
-	cacheValue(fy);
-	cacheValue(fz);
-
-	cachePoint(fx,fy,fz);
-}
-
-void CGALCache::cachePoint(CGAL::FT& x,CGAL::FT& y,CGAL::FT& z)
-{
-	if(!allPoints.contains(values)) {
-		CGAL::Point3 p(x,y,z);
-		allPoints.insert(values,p);
-#if Q_DEBUG
-	} else {
-		qDebug() << "Point cache hit.";
-#endif
-	}
+	cacheValue(x);
+	cacheValue(y);
+	cacheValue(z);
 
 	points.append(values);
-
 	values.clear();
-
 }
 
 void CGALCache::cachePolygon()
 {
-	if(!allPolygons.contains(points)) {
-		CGALPolygon* pg=new CGALPolygon();
-		foreach(i_Point ip, points)
-			pg->append(allPoints.value(ip));
-
-		allPolygons.insert(points,pg);
-#if Q_DEBUG
-	} else {
-		qDebug() << "Polygon cache hit.";
-#endif
-	}
-
 	polygons.append(points);
-
 	points.clear();
 }
 
-void CGALCache::cachePrimitive()
+void CGALCache::cacheReset()
 {
-	if(!allPrimitives.contains(polygons)) {
-		CGALPrimitive* pr=new CGALPrimitive();
-		foreach(i_Polygon ip, polygons) {
-			CGALPolygon* pg=allPolygons.value(ip);
-			if(pg)
-				pr->appendPolygon(pg);
-		}
+	values.clear();
+	points.clear();
+	polygons.clear();
+}
 
-		allPrimitives.insert(polygons,pr);
-
-		primitive=pr;
-	} else {
-#if Q_DEBUG
-		qDebug() << "Primitive cache hit.";
-#endif
-		CGALPrimitive* pr=allPrimitives.value(polygons);
-		primitive=static_cast<CGALPrimitive*>(pr->copy());
-	}
-
+void CGALCache::cachePrimitive(Primitive* pr)
+{
+	allPrimitives.insert(polygons,pr->copy());
 	polygons.clear();
 }
 
 Primitive* CGALCache::fetchPrimitive()
 {
-	return primitive;
+	if(allPrimitives.contains(polygons)) {
+		Primitive* pr=allPrimitives.value(polygons);
+		return pr->copy();
+	}
+	return NULL;
 }

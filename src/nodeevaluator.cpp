@@ -64,9 +64,23 @@ void NodeEvaluator::visit(PrimitiveNode* n)
 		}
 		ch->cachePolygon();
 	}
-	ch->cachePrimitive();
 
 	Primitive* cp=ch->fetchPrimitive();
+	if(!cp) {
+		output << "Cache miss" << endl;
+		cp=createPrimitive();
+		foreach(Polygon* p, pr->getPolygons()) {
+			cp->createPolygon();
+			foreach(Point pt,p->getPoints()) {
+				cp->appendVertex(pt);
+			}
+		}
+		ch->cachePrimitive(cp);
+	} else {
+		output << "Cache hit" << endl;
+		ch->cacheReset();
+	}
+
 	result=cp;
 }
 

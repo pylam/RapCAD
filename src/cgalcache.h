@@ -12,74 +12,40 @@
 class CGALCache : public Cache
 {
 public:
-	typedef CGAL::FT FT;
 	CGALCache();
-	void cacheValue(CGAL::FT&);
-	void cachePoint(Point);
-	void cachePoint(CGAL::FT&,CGAL::FT&,CGAL::FT&);
+	void cacheValue(const decimal&);
+	void cachePoint(const Point&);
 	void cachePolygon();
-	void cachePrimitive();
+	void cachePrimitive(Primitive*);
 	Primitive* fetchPrimitive();
+	void cacheReset();
 private:
-	QList<CGAL::FT> allValues;
+	QList<decimal> allValues;
 	typedef QList<uint> i_Point;
 	i_Point values;
-	QHash<i_Point,CGAL::Point3> allPoints;
 	typedef QList<i_Point> i_Polygon;
 	i_Polygon points;
-	QHash<i_Polygon,CGALPolygon*> allPolygons;
 	typedef QList<i_Polygon> i_Primitive;
 	i_Primitive polygons;
-	QHash<i_Primitive,CGALPrimitive*> allPrimitives;
-	CGALPrimitive* primitive;
+	QHash<i_Primitive,Primitive*> allPrimitives;
 };
 
-inline static QString print(QList<uint> l)
+inline uint qHash(const QList<uint>& l,uint seed)
 {
-	QString result;
-	OnceOnly first;
-	foreach(uint i,l) {
-		if(!first())
-			result.append(",");
-		result.append(QString().setNum(i));
-	}
-	/*result.append(" key: ");
-	uint k = qHash(l);
-	result.append(QString().setNum(k));*/
-	return result;
+	uint hash = 17;
+	foreach(uint i,l)
+		hash *= 31 + i;
+
+	return hash+seed;
 }
 
 template <class T>
-inline static QString print(QList<T> l)
+inline uint qHash(const QList<T>& l,uint seed)
 {
-	QString result;
-	foreach(T i,l) {
-		result.append("[");
-		result.append(print(i));
-		result.append("]");
-	}
-	/*result.append(" key: ");
-	uint k = qHash(l);
-	result.append(QString().setNum(k));*/
-	return result;
-}
-/*
-inline uint qHash(const QList<uint>& h,uint seed)
-{
-	//uint k;
-	//foreach(uint i,h)
-	//	k^=i;
-	//return k^seed;
-	return qHash(print(h));
-}
-*/
-template <class T>
-inline uint qHash(const QList<T>& h/*,uint seed*/)
-{
-	//uint k;
-	//foreach(T i,h)
-	//	k=qHash(k/*,seed*/)^qHash(i/*,seed*/);
-	//return k;
-	return qHash(print(h));
+	uint hash = 17; //Magic fairy dust (should be prime)
+	foreach(T i,l)
+		hash *= 31 + qHash(i,seed);
+
+	return hash+seed;
 }
 #endif // CGALCACHE_H
