@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,27 +18,40 @@
 
 #include "script.h"
 
-Script::Script()
+extern void parsescript(Script&,Reporter&,const QString&);
+extern void parsescript(Script&,Reporter&,QFileInfo);
+
+Script::Script(Reporter& r) : reporter(r)
 {
-	fileLocation=NULL;
 }
 
 Script::~Script()
 {
-	foreach(Declaration* d,declarations)
+	for(Declaration* d: declarations)
 		delete d;
-
-	delete fileLocation;
 }
 
-void Script::setDeclarations(QList<Declaration*> decls)
+void Script::parse(const QString &s)
 {
-	this->declarations = decls;
+	parsescript(*this,reporter,s);
+}
+
+void Script::parse(QFileInfo info)
+{
+	if(!info.exists())
+		reporter.reportFileMissingError(info.absoluteFilePath());
+	else
+		parsescript(*this,reporter,info);
+}
+
+void Script::setDeclarations(const QList<Declaration*>& decls)
+{
+	declarations = decls;
 }
 
 QList<Declaration*> Script::getDeclarations() const
 {
-	return this->declarations;
+	return declarations;
 }
 
 void Script::addDeclaration(Declaration* dec)
@@ -56,27 +69,27 @@ void Script::removeDeclaration(Declaration* dec)
 	declarations.removeAll(dec);
 }
 
-void Script::addDocumentation(QList<CodeDoc*> docs)
+void Script::addDocumentation(const QList<CodeDoc*>& docs)
 {
 	documentation.append(docs);
 }
 
-QList<QList<CodeDoc*> > Script::getDocumentation()
+QList<QList<CodeDoc*> > Script::getDocumentation() const
 {
 	return documentation;
 }
 
 void Script::accept(TreeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }
 
-QFileInfo *Script::getFileLocation() const
+QDir Script::getFileLocation() const
 {
-    return fileLocation;
+	return fileLocation;
 }
 
-void Script::setFileLocation(QFileInfo *value)
+void Script::setFileLocation(QDir value)
 {
-    fileLocation = value;
+	fileLocation = value;
 }

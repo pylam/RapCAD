@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,14 +18,14 @@
 
 #include "functionscope.h"
 
-FunctionScope::FunctionScope()
+FunctionScope::FunctionScope() :
+	expression(nullptr)
 {
-	expression=NULL;
 }
 
 FunctionScope::~FunctionScope()
 {
-	foreach(Statement* s,statements)
+	for(Statement* s: statements)
 		delete s;
 
 	delete expression;
@@ -33,25 +33,25 @@ FunctionScope::~FunctionScope()
 
 void FunctionScope::setExpression(Expression* exp)
 {
-	this->expression = exp;
+	expression = exp;
 }
 
 Expression* FunctionScope::getExpression() const
 {
-	return this->expression;
+	return expression;
 }
 
-void FunctionScope::setStatements(QList<Statement*> stmts)
+void FunctionScope::setStatements(const QList<Statement*>& stmts)
 {
-	this->statements = stmts;
+	statements = stmts;
 }
 
 QList<Statement*> FunctionScope::getStatements() const
 {
-	return this->statements;
+	return statements;
 }
 
 void FunctionScope::accept(TreeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

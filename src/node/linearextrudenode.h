@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define LINEAREXTRUDENODE_H
 
 #include "node.h"
+#include "point.h"
 
 class LinearExtrudeNode : public Node
 {
@@ -27,9 +28,13 @@ public:
 	LinearExtrudeNode();
 	void setHeight(decimal);
 	decimal getHeight() const;
-	void accept(NodeVisitor&);
+	Point getAxis() const;
+	void setAxis(const Point& value);
+
+	void accept(NodeVisitor&) override;
 private:
 	decimal height;
+	Point axis;
 };
 
 #endif // LINEAREXTRUDENODE_H

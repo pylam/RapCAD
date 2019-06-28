@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,22 +18,23 @@
 
 #include "conemodule.h"
 #include "context.h"
-#include "math.h"
+#include "rmath.h"
 #include "numbervalue.h"
 
-ConeModule::ConeModule() : PrimitiveModule("cone")
+ConeModule::ConeModule(Reporter& r) : PrimitiveModule(r,"cone")
 {
-	addParameter("height");
-	addParameter("radius1");
-	addParameter("radius2");
-	addParameter("center");
+	addDescription(tr("Constructs a cone. It is placed centered on the xy plane."));
+	addParameter("height",tr("The height of the cone."));
+	addParameter("radius1",tr("The radius of the bottom of the cone."));
+	addParameter("radius2",tr("The radius of the top of the cone."));
+	addParameter("center",tr("Specifies whether the cone should be vertically centered along the z axis."));
 }
 
-Node* ConeModule::evaluate(Context* ctx)
+Node* ConeModule::evaluate(const Context& ctx) const
 {
-	NumberValue* heightValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
-	NumberValue* r1Value = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
-	NumberValue* r2Value = dynamic_cast<NumberValue*>(getParameterArgument(ctx,2));
+	auto* heightValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
+	auto* r1Value = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
+	auto* r2Value = dynamic_cast<NumberValue*>(getParameterArgument(ctx,2));
 	Value* centerValue = getParameterArgument(ctx,3);
 
 	decimal h=1.0;
@@ -54,33 +55,38 @@ Node* ConeModule::evaluate(Context* ctx)
 	z1 = 0.0;
 	z2 = h;
 
-	Fragment fg=getSpecialVariables(ctx);
-	decimal r=fmax(r1,r2);
-	int f = fg.getFragments(r);
+	decimal r=r_max(r1,r2);
+
+	Fragment* fg = Fragment::createFragment(ctx);
+	int f = fg->getFragments(r);
+	delete fg;
 
 	QList<Point> c1=getCircle(r1,f,z1);
 	QList<Point> c2=getCircle(r2,f,z2);
 
-	PrimitiveNode* p = new PrimitiveNode();
+	auto* pn=new PrimitiveNode(reporter);
+	Primitive* p=pn->createPrimitive();
+	pn->setChildren(ctx.getInputNodes());
+
 	if(r1<=0.0&&r2<=0.0)
-		return p;
+		return pn;
 
 	int n=0;
 	Polygon* pg;
 	if(r1>0) {
 		pg=p->createPolygon();
-		foreach(Point pt,c1) {
+		for(const auto& pt: c1) {
 			p->createVertex(pt);
 			pg->append(n++);
 		}
 	}
 
 	if(h==0.0)
-		return p;
+		return pn;
 
 	if(r2>0) {
 		pg=p->createPolygon();
-		foreach(Point pt,c2) {
+		for(const auto& pt: c2) {
 			p->createVertex(pt);
 			pg->prepend(n++);
 		}
@@ -89,11 +95,11 @@ Node* ConeModule::evaluate(Context* ctx)
 	/* In the cases where r1 or r2 are 0,  n will now convinently be pointing
 	 * one past the end, and point to the apex as defined here when needed */
 	if(r1<=0)
-		p->createVertex(0.0,0.0,z1);
+		p->createVertex(Point(0.0,0.0,z1));
 	if(r2<=0)
-		p->createVertex(0.0,0.0,z2);
+		p->createVertex(Point(0.0,0.0,z2));
 
-	for(int i=0; i<f; ++i) {
+	for(auto i=0; i<f; ++i) {
 		int j=(i+1)%f;
 
 		int k=r2<=0?n:i;
@@ -127,11 +133,11 @@ Node* ConeModule::evaluate(Context* ctx)
 	}
 
 	if(center) {
-		AlignNode* n=new AlignNode();
-		n->setCenter(true);
-		n->addChild(p);
-		return n;
+		auto* an=new AlignNode();
+		an->setCenterVertical();
+		an->addChild(pn);
+		return an;
 	}
 
-	return p;
+	return pn;
 }

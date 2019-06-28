@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#if USE_CGAL
+#ifdef USE_CGAL
 #ifndef CGALEXPLORER_H
 #define CGALEXPLORER_H
 
@@ -25,9 +25,7 @@
 class CGALExplorer
 {
 public:
-	CGALExplorer(Primitive*);
-	CGALExplorer(CGALPrimitive*);
-	CGALExplorer(QList<Primitive*>);
+	explicit CGALExplorer(Primitive*);
 	CGALPrimitive* getPerimeters();
 	CGALPrimitive* getPrimitive();
 	QList<CGAL::Point3> getPoints();
@@ -35,14 +33,16 @@ public:
 	QList<CGALPolygon*> getBase();
 	CGALVolume getVolume(bool);
 private:
+	typedef QList<CGAL::Point3> Points;
+	void explore();
 	void evaluate();
-	CGALPrimitive* perimeters;
 	bool evaluated;
 	CGALPrimitive* primitive;
-	typedef QList<CGAL::Point3> Points;
-	Points allPoints;
+	CGALPrimitive* perimeters;
+	const CGAL::NefPolyhedron3& nef;
 	QList<CGALPolygon*> basePolygons;
 	QList<Points> volumePoints;
+	Points allPoints;
 };
 
 #endif // CGALEXPLORER_H

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,18 +28,17 @@ class Reporter
 {
 	Q_DECLARE_TR_FUNCTIONS(Reporter)
 public:
-	Reporter(QTextStream& s);
+	explicit Reporter(QTextStream& s);
 	void startTiming();
-	void reportTiming(QString);
-	void reportSyntaxError(AbstractTokenBuilder*,QString,QString);
-	void reportLexicalError(AbstractTokenBuilder*,QString);
-	void reportFileMissingError(QString);
-	void reportWarning(QString);
-	void reportMessage(QString);
-	void reportException(QString);
+	void reportTiming(const QString&);
+	void reportSyntaxError(const AbstractTokenBuilder&, const QString&);
+	void reportLexicalError(const AbstractTokenBuilder&,const QString&);
+	void reportFileMissingError(const QString&);
+	void reportWarning(const QString&);
+	void reportMessage(const QString&);
+	void reportException(const QString&);
 	void setReturnCode(int);
-	bool getReturnCode();
-	void outputTime(int);
+	bool getReturnCode() const;
 	void setKludge(int);
 	QTextStream& output;
 private:

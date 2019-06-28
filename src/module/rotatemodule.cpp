@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,75 +16,66 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "rotatemodule.h"
+#include "context.h"
 #include "node/transformationnode.h"
 #include "numbervalue.h"
 #include "vectorvalue.h"
-#include "tau.h"
+#include "complexvalue.h"
+#include "rmath.h"
 
-RotateModule::RotateModule() : Module("rotate")
+RotateModule::RotateModule(Reporter& r) : Module(r,"rotate")
 {
-	addParameter("angle");
-	addParameter("vector");
+	addDescription(tr("Rotates its children about the origin or an arbitrary axis."));
+	addParameter("angle",tr("The angle of rotation in degress. It can be a single value or rotation about x,y,z. With the latter, three rotations are performed in the order x,y,z"));
+	addParameter("vector",tr("The axis of rotation when used with a single angle value"));
 }
 
-decimal RotateModule::round(decimal a)
+Node* RotateModule::evaluate(const Context& ctx) const
 {
-	return a<0?ceil(a-0.5):floor(a+0.5);
-}
+	enum rotationType {
+		axis,
+		origin,
+		quaternion
+	};
 
-bool RotateModule::rightAngle(decimal a)
-{
-	return fmod(a,90)==0.0;
-}
+	auto* n=new TransformationNode();
+	n->setChildren(ctx.getInputNodes());
 
-decimal RotateModule::hardCos(decimal a)
-{
-	decimal ca=cos(a*M_TAU/360.0);
-	return rightAngle(a)?round(ca):ca;
-}
-
-decimal RotateModule::hardSin(decimal a)
-{
-	decimal sa=sin(a*M_TAU/360.0);
-	return rightAngle(a)?round(sa):sa;
-}
-
-Node* RotateModule::evaluate(Context* ctx)
-{
-	TransformationNode* n=new TransformationNode();
-
-	bool origin;
-	Point vec(0.0,0.0,0.1);
-	decimal a=0.0;
-	NumberValue* angValue=dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
+	rotationType rotation=axis;
+	decimal a=0.0,x=0.0,y=0.0,z=1.0;
+	auto* angValue=dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
 	if(angValue) {
 		a=angValue->getNumber();
-		VectorValue* vecValue=dynamic_cast<VectorValue*>(getParameterArgument(ctx,1));
-		if(vecValue)
-			vec=vecValue->getPoint();
-		origin=false;
+		auto* vecValue=dynamic_cast<VectorValue*>(getParameterArgument(ctx,1));
+		if(vecValue) {
+			Point v=vecValue->getPoint();
+			x=v.x(); y=v.y(); z=v.z();
+			rotation=axis;
+		}
 	} else {
-		VectorValue* vecValue=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
-		if(vecValue)
-			vec=vecValue->getPoint();
-		origin=true;
+		auto* vecValue=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
+		if(vecValue) {
+			Point v=vecValue->getPoint();
+			x=v.x(); y=v.y(); z=v.z();
+			rotation=origin;
+		} else {
+			auto* cpxValue=dynamic_cast<ComplexValue*>(getParameterArgument(ctx,0));
+			if(cpxValue) {
+				cpxValue->toQuaternion(a,x,y,z);
+				rotation=quaternion;
+			}
+		}
 	}
 
-	decimal x=0.0,y=0.0,z=0.0;
-	vec.getXYZ(x,y,z);
-	if(x==0.0&&y==0.0&&z==0.0)
-		origin=true;
+	if(rotation==origin) {
 
-	if(origin) {
-
-		decimal cx = hardCos(x);
-		decimal cy = hardCos(y);
-		decimal cz = hardCos(z);
-		decimal sx = hardSin(x);
-		decimal sy = hardSin(y);
-		decimal sz = hardSin(z);
+		decimal cx = r_right_cos(x);
+		decimal cy = r_right_cos(y);
+		decimal cz = r_right_cos(z);
+		decimal sx = r_right_sin(x);
+		decimal sy = r_right_sin(y);
+		decimal sz = r_right_sin(z);
 
 		/*
 		Given the three affine transformation matricies for counter-clockwise
@@ -99,36 +90,65 @@ Node* RotateModule::evaluate(Context* ctx)
 		http://tinyurl.com/q4utr88
 		*/
 
-		decimal RzRyRx[16] = {
+		auto* RzRyRx = new TransformMatrix(
 			cy*cz,cz*sx*sy-cx*sz,cx*cz*sy+sx*sz,0,
 			cy*sz,cx*cz+sx*sy*sz,-cz*sx+cx*sy*sz,0,
 			-sy,cy*sx,cx*cy,0,
 			0,0,0,1
-		};
+		);
 
-		for(int i=0; i<16; i++)
-			n->matrix[i]=RzRyRx[i];
+		n->setMatrix(RzRyRx);
 
-	} else {
+	} else if(rotation==axis) {
 
-		decimal c=hardCos(a);
-		decimal s=hardSin(a);
+		decimal c=r_right_cos(a);
+		decimal s=r_right_sin(a);
 
-		decimal mag = sqrt(x*x + y*y + z*z);
+		decimal mag = r_sqrt(x*x + y*y + z*z,false);
+		if(mag==0)
+			return n;
+
 		decimal u = x/mag;
 		decimal v = y/mag;
 		decimal w = z/mag;
+		decimal c1=1-c;
 
-		decimal TxyTzRaTzTxy[16] = {
-			u*u*(1-c)+c,u*v*(1-c)-w*s,u*w*(1-c)+v*s,0,
-			u*v*(1-c)+w*s,v*v*(1-c)+c,v*w*(1-c)-u*s,0,
-			u*w*(1-c)-v*s,v*w*(1-c)+u*s,w*w*(1-c)+c,0,
+		auto* TxyTzRaTzTxy = new TransformMatrix(
+			u*u*c1+c,u*v*c1-w*s,u*w*c1+v*s,0,
+			u*v*c1+w*s,v*v*c1+c,v*w*c1-u*s,0,
+			u*w*c1-v*s,v*w*c1+u*s,w*w*c1+c,0,
 			0,0,0,1
-		};
+		);
 
-		for(int i=0; i<16; i++)
-			n->matrix[i]=TxyTzRaTzTxy[i];
+		n->setMatrix(TxyTzRaTzTxy);
+
+	} else {
+
+		decimal xx=x*x;
+		decimal xy=x*y;
+		decimal xz=x*z;
+		decimal xa=x*a;
+
+		decimal yy=y*y;
+		decimal yz=y*z;
+		decimal ya=y*a;
+
+		decimal zz=z*z;
+		decimal za=z*a;
+
+		/* The following rotation matrix is the same
+		 * as above for axis rotations, with the exception
+		 * that no normalisation is done. */
+		auto* mx = new TransformMatrix(
+			1-2*(yy+zz),2*(xy-za),2*(xz+ya),0,
+			2*(xy+za),1-2*(xx+zz),2*(yz-xa),0,
+			2*(xz-ya),2*(yz+xa),1-2*(xx+yy),0,
+			0,0,0,1
+		);
+
+		n->setMatrix(mx);
+
 	}
-	n->setChildren(ctx->getInputNodes());
+
 	return n;
 }

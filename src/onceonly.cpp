@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,17 +18,15 @@
 
 #include "onceonly.h"
 
-OnceOnly::OnceOnly()
+OnceOnly::OnceOnly() :
+	called(false)
 {
-	called=false;
 }
 
-bool OnceOnly::operator ()()
+bool OnceOnly::operator()()
 {
-	if(!called) {
-		called=true;
-		return true;
-	} else {
+	if(called)
 		return false;
-	}
+	called=true;
+	return true;
 }

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,22 +20,26 @@
 #include "context.h"
 #include "onceonly.h"
 
-WriteModule::WriteModule(QTextStream& s) : Module("write"), output(s)
+WriteModule::WriteModule(Reporter& r) :
+	Module(r,"write"),
+	output(r.output)
+{
+	addDescription(tr("Write the given text to the console window."));
+}
+
+WriteModule::WriteModule(Reporter& r, const QString &n) : Module(r,n), output(r.output)
 {
 }
 
-WriteModule::WriteModule(const QString n, QTextStream& s) : Module(n), output(s)
+Node* WriteModule::evaluate(const Context& ctx) const
 {
-}
-
-Node* WriteModule::evaluate(Context* ctx)
-{
-	QList<Value*> args=ctx->getArguments();
+	auto args=ctx.getArguments();
 	OnceOnly first;
-	foreach(Value* a,args) {
+	for(auto a: args) {
+		Value* val=a.second;
 		if(!first())
 			output << " ";
-		output << a->getValueString();
+		output << val->getValueString();
 	}
-	return NULL;
+	return nullptr;
 }

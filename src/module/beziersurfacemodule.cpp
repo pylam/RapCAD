@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,79 +17,101 @@
  */
 
 #include "beziersurfacemodule.h"
+#include "context.h"
 #include "vectorvalue.h"
 #include "node/primitivenode.h"
-#include "math.h"
+#include "rmath.h"
+#include "fragment.h"
 
-BezierSurfaceModule::BezierSurfaceModule() : Module("bezier_surface")
+BezierSurfaceModule::BezierSurfaceModule(Reporter& r) : Module(r,"bezier_surface")
 {
-	addParameter("mesh");
+	addDescription(tr("Constructs a bezier surface."));
+	addParameter("mesh",tr("A 4 by 4 matrix of points."));
 }
 
-decimal BezierSurfaceModule::bez03(decimal u)
+decimal BezierSurfaceModule::bez03(const decimal& u) const
 {
-	return pow((1-u), 3);
+	return r_pow((1-u), 3);
 }
 
-decimal BezierSurfaceModule::bez13(decimal u)
+decimal BezierSurfaceModule::bez13(const decimal& u) const
 {
-	return 3*u*(pow((1-u),2));
+	return 3*u*(r_pow((1-u),2));
 }
 
-decimal BezierSurfaceModule::bez23(decimal u)
+decimal BezierSurfaceModule::bez23(const decimal& u) const
 {
-	return 3*(pow(u,2))*(1-u);
+	return 3*(r_pow(u,2))*(1-u);
 }
 
-decimal BezierSurfaceModule::bez33(decimal u)
+decimal BezierSurfaceModule::bez33(const decimal& u) const
 {
-	return pow(u,3);
+	return r_pow(u,3);
 }
 
-Point BezierSurfaceModule::pointOnBez(Points cps, decimal u)
+Point BezierSurfaceModule::pointOnBez(const Points& cps, const decimal& u) const
 {
 	decimal a=bez03(u),b=bez13(u),c=bez23(u),d=bez33(u);
-	decimal x=a*cps[0].getX()+b*cps[1].getX()+c*cps[2].getX()+d*cps[3].getX();
-	decimal y=a*cps[0].getY()+b*cps[1].getY()+c*cps[2].getY()+d*cps[3].getY();
-	decimal z=a*cps[0].getZ()+b*cps[1].getZ()+c*cps[2].getZ()+d*cps[3].getZ();
+	decimal x=a*cps[0].x()+b*cps[1].x()+c*cps[2].x()+d*cps[3].x();
+	decimal y=a*cps[0].y()+b*cps[1].y()+c*cps[2].y()+d*cps[3].y();
+	decimal z=a*cps[0].z()+b*cps[1].z()+c*cps[2].z()+d*cps[3].z();
 
 	return Point(x,y,z);
 }
 
-Point BezierSurfaceModule::pointOnBezMesh(Mesh mesh,Vector uv)
+Point BezierSurfaceModule::pointOnBezMesh(const Mesh& mesh, const Vector& uv) const
 {
 	Points p;
-	p.append(pointOnBez(mesh[0], uv[0]));
-	p.append(pointOnBez(mesh[1], uv[0]));
-	p.append(pointOnBez(mesh[2], uv[0]));
-	p.append(pointOnBez(mesh[3], uv[0]));
+	decimal uv0=uv[0];
+	p.append(pointOnBez(mesh[0], uv0));
+	p.append(pointOnBez(mesh[1], uv0));
+	p.append(pointOnBez(mesh[2], uv0));
+	p.append(pointOnBez(mesh[3], uv0));
 
 	return pointOnBez(p,uv[1]);
 }
 
-Node* BezierSurfaceModule::evaluate(Context* ctx)
+Node* BezierSurfaceModule::evaluate(const Context& ctx) const
 {
 	Mesh mesh;
-	VectorValue* meshVec=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
-	if(meshVec) {
-		foreach(Value* pointsVal,meshVec->getChildren()) {
-			Points points;
-			VectorValue* pointsVec=dynamic_cast<VectorValue*>(pointsVal);
-			if(pointsVec)
-				foreach(Value* pointVal,pointsVec->getChildren()) {
-				VectorValue* pointVec=dynamic_cast<VectorValue*>(pointVal);
-				points.append(pointVec->getPoint());
-			}
-			mesh.append(points);
+	auto* meshVec=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
+
+	auto* pn=new PrimitiveNode(reporter);
+	Primitive* p=pn->createPrimitive();
+	p->setType(Primitive::Surface);
+	pn->setChildren(ctx.getInputNodes());
+
+	if(!meshVec)
+		return pn;
+
+	int i=0,j=0;
+	for(Value* pointsVal: meshVec->getChildren()) {
+		Points points;
+		auto* pointsVec=dynamic_cast<VectorValue*>(pointsVal);
+		if(!pointsVec) continue;
+		j=0;
+		for(Value* pointVal: pointsVec->getChildren()) {
+			auto* pointVec=dynamic_cast<VectorValue*>(pointVal);
+			if(!pointVec) continue;
+			points.append(pointVec->getPoint());
+			if(++j >= 4) break;
 		}
+		mesh.append(points);
+		if(++i >= 4) break;
 	}
 
-	int f=24; //TODO use getfragments and $fn,$fa,$fs variables;
+	if(i*j < 16)
+		return pn;
 
-	PrimitiveNode* p=new PrimitiveNode();
-	for(decimal u=0; u<f; u++) {
-		for(decimal v=0; v<f; v++) {
+	Fragment* fg = Fragment::createFragment(ctx);
+	int f = fg->getFragments(1);
+	delete fg;
+
+	for(auto i=0; i<f; ++i) {
+		for(auto j=0; j<f; ++j) {
 			Vector a;
+			decimal u=i;
+			decimal v=j;
 			a.append(u/f);
 			a.append(v/f);
 
@@ -98,8 +120,8 @@ Node* BezierSurfaceModule::evaluate(Context* ctx)
 	}
 
 	Polygon* pg;
-	for(decimal u=0; u<f-1; u++) {
-		for(decimal v=0; v<f-1; v++) {
+	for(auto u=0; u<f-1; ++u) {
+		for(auto v=0; v<f-1; ++v) {
 
 			int i=(u*f)+v;
 			int j=((u+1)*f)+v;
@@ -117,5 +139,5 @@ Node* BezierSurfaceModule::evaluate(Context* ctx)
 		}
 	}
 
-	return p;
+	return pn;
 }

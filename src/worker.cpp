@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,25 +24,32 @@
 #include "product.h"
 #include "numbervalue.h"
 
-#if USE_CGAL
+#ifdef USE_CGAL
 #include "CGAL/exceptions.h"
 #include "cgalexport.h"
 #include "cgalrenderer.h"
 #include "cgalexplorer.h"
+#else
+#include "simplerenderer.h"
 #endif
 
-Worker::Worker(QTextStream& s) :
-	Strategy(s)
+Worker::Worker(Reporter& r) :
+	Strategy(r),
+	inputFile(""),
+	outputFile(""),
+	print(false),
+	generate(false),
+	primitive(nullptr),
+	previous(nullptr)
 {
-	primitive=NULL;
-	render=NULL;
-	inputFile="";
-	outputFile="";
-	print=false;
-	generate=false;
 }
 
-void Worker::setup(QString i,QString o,bool p,bool g)
+Worker::~Worker()
+{
+	delete primitive;
+}
+
+void Worker::setup(const QString& i,const QString& o,bool p,bool g)
 {
 	inputFile=i;
 	outputFile=o;
@@ -53,14 +60,14 @@ void Worker::setup(QString i,QString o,bool p,bool g)
 int Worker::evaluate()
 {
 	internal();
-	return reporter->getReturnCode();
+	return reporter.getReturnCode();
 }
 
 void Worker::internal()
 {
 
 	try {
-		reporter->startTiming();
+		reporter.startTiming();
 
 		primary();
 
@@ -68,14 +75,14 @@ void Worker::internal()
 			update();
 			generation();
 		}
-		reporter->setReturnCode(EXIT_SUCCESS);
+		reporter.setReturnCode(EXIT_SUCCESS);
 
-#if USE_CGAL
-	} catch(CGAL::Failure_exception e) {
-		reporter->reportException(QString::fromStdString(e.what()));
+#ifdef USE_CGAL
+	} catch(const CGAL::Failure_exception& e) {
+		resultFailed(QString::fromStdString(e.what()));
 #endif
 	} catch(...) {
-		reporter->reportException(tr("Unknown error."));
+		resultFailed(tr("Unknown error."));
 	}
 
 	update();
@@ -85,17 +92,17 @@ void Worker::internal()
 
 void Worker::primary()
 {
-	Script* s=parse(inputFile,reporter,true);
+	Script s(reporter);
+	s.parse(inputFile);
 
 	if(print) {
 		TreePrinter p(output);
-		s->accept(p);
+		s.accept(p);
 		output << endl;
 	}
 
 	TreeEvaluator e(reporter);
-	s->accept(e);
-	delete s;
+	s.accept(e);
 	output.flush();
 
 	Node* n = e.getRootNode();
@@ -109,9 +116,9 @@ void Worker::primary()
 	n->accept(ne);
 	delete n;
 
-	primitive=ne.getResult();
+	updatePrimitive(ne.getResult());
 	if(!primitive)
-		reporter->reportWarning(tr("no top level object."));
+		reporter.reportWarning(tr("no top level object."));
 	else if(!outputFile.isEmpty()) {
 		exportResult(outputFile);
 	}
@@ -119,118 +126,137 @@ void Worker::primary()
 
 void Worker::generation()
 {
-	Script* s=parse("reprap.rcam",NULL,true);
+	Script s(reporter);
+	s.parse(QFileInfo("reprap.rcam"));
 
-	TreeEvaluator* e = new TreeEvaluator(reporter);
+	auto* e = new TreeEvaluator(reporter);
 	decimal height=getBoundsHeight();
 	QList<Argument*> args=getArgs(height);
 	Callback* c = addCallback("layers",s,args);
-	s->accept(*e);
+	s.accept(*e);
 
-	NumberValue* v = dynamic_cast<NumberValue*>(c->getResult());
+	auto* v = dynamic_cast<NumberValue*>(c->getResult());
 	if(v) {
-		reporter->reportMessage(tr("Layers: %1").arg(v->getValueString()));
+		reporter.reportMessage(tr("Layers: %1").arg(v->getValueString()));
 
-		int itterations=v->getNumber();
+		int itterations=v->toInteger();
 		Instance* m=addProductInstance("manufacture",s);
-		for(int i=0; i<=itterations; i++) {
+		for(auto i=0; i<=itterations; ++i) {
 			if(i>0) {
 				e = new TreeEvaluator(reporter);
 			}
-			reporter->reportMessage(tr("Manufacturing layer: %1").arg(i));
+			reporter.reportMessage(tr("Manufacturing layer: %1").arg(i));
 
 			QList<Argument*> args=getArgs(i);
 			m->setArguments(args);
 
-			s->accept(*e);
+			s.accept(*e);
 			Node* n=e->getRootNode();
 
-			NodeEvaluator* ne = new NodeEvaluator(reporter);
+			auto* ne = new NodeEvaluator(reporter);
 			n->accept(*ne);
 			delete n;
 
-			primitive=ne->getResult();
+			updatePrimitive(ne->getResult());
 			delete ne;
 
 			update();
 		}
 	}
 	delete e;
-	delete s;
 }
 
-decimal Worker::getBoundsHeight()
+decimal Worker::getBoundsHeight() const
 {
-#if USE_CGAL
-	CGALPrimitive* pr=dynamic_cast<CGALPrimitive*>(primitive);
+#ifdef USE_CGAL
+	auto* pr=dynamic_cast<CGALPrimitive*>(primitive);
+	if(!pr) return 1;
 	CGAL::Cuboid3 b=pr->getBounds();
-	return to_decimal(b.zmax());
-#endif
+	return b.zmax();
+#else
 	return 1;
+#endif
 }
 
 QList<Argument*> Worker::getArgs(decimal value)
 {
 	QList<Argument*> args;
-	Argument* a=new Argument();
-	Variable* var=new Variable();
+	auto* a=new Argument();
+	auto* var=new Variable();
 	a->setVariable(var);
-	Literal* lit=new Literal();
+	auto* lit=new Literal();
 	lit->setValue(value);
 	a->setExpression(lit);
 	args.append(a);
 	return args;
 }
 
-Instance* Worker::addProductInstance(QString name,Script* s)
+Instance* Worker::addProductInstance(const QString& name,Script& s)
 {
-	Instance* m = new Instance();
+	auto* m = new Instance();
 	m->setName(name);
-	Product* r=new Product();
+	auto* r=new Product();
 	r->setPrimitive(primitive);
 	QList<Statement*> children;
 	children.append(r);
 	m->setChildren(children);
-	s->addDeclaration(m);
+	s.addDeclaration(m);
 
 	return m;
 }
 
-void Worker::exportResult(QString fn)
+void Worker::exportResult(const QString& fn)
 {
-#if USE_CGAL
+#ifdef USE_CGAL
+	reporter.startTiming();
+
 	try {
-		CGALPrimitive* p = dynamic_cast<CGALPrimitive*>(primitive);
-		if(p) {
-			CGALExport exporter(p);
-			exporter.exportResult(fn);
-		}
-	} catch(CGAL::Failure_exception e) {
-		reporter->reportException(QString::fromStdString(e.what()));
+		CGALExport exporter(primitive,reporter);
+		exporter.exportResult(fn);
+	} catch(const CGAL::Failure_exception& e) {
+		resultFailed(QString::fromStdString(e.what()));
 	}
+
+	reporter.reportTiming(tr("export"));
 #endif
 }
 
 bool Worker::resultAvailable()
 {
-	return (primitive!=NULL);
+	return (primitive!=nullptr);
+}
+
+void Worker::resultAccepted()
+{
+	reporter.reportTiming(tr("compiling"));
+	delete previous;
+}
+
+void Worker::resultFailed(const QString& error)
+{
+	reporter.reportException(error);
+	updatePrimitive(nullptr);
+}
+
+void Worker::updatePrimitive(Primitive* pr)
+{
+	previous=primitive;
+	primitive=pr;
 }
 
 Renderer* Worker::getRenderer()
 {
-	if(render)
-		delete render;
-
-#if USE_CGAL
+#ifdef USE_CGAL
 	try {
-		CGALPrimitive* p = dynamic_cast<CGALPrimitive*>(primitive);
-		if(p)
-			render=new CGALRenderer(p);
-	} catch(CGAL::Failure_exception e) {
-		reporter->reportException(QString::fromStdString(e.what()));
+
+		return new CGALRenderer(primitive);
+
+	} catch(const CGAL::Failure_exception& e) {
+		resultFailed(QString::fromStdString(e.what()));
+		return nullptr;
 	}
+#else
+	return new SimpleRenderer(primitive);
 #endif
 
-	reporter->reportTiming(tr("compiling"));
-	return render;
 }

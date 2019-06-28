@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,25 +18,27 @@
 
 #include "treeevaluator.h"
 #include "vectorvalue.h"
+#include "complexvalue.h"
 #include "rangevalue.h"
-#include "node/unionnode.h"
+#include "valueiterator.h"
 #include "builtincreator.h"
 #include "module/importmodule.h"
 #include "syntaxtreebuilder.h"
+#include "module/unionmodule.h"
 
-TreeEvaluator::TreeEvaluator(Reporter* r)
+TreeEvaluator::TreeEvaluator(Reporter& r) :
+	reporter(r),
+	context(nullptr),
+	layout(nullptr),
+	descendDone(false),
+	rootNode(nullptr)
 {
-	reporter=r;
-	context=NULL;
-	rootNode=NULL;
-	layout=NULL;
-	descendDone=false;
 }
 
 TreeEvaluator::~TreeEvaluator()
 {
 	Value::cleanup();
-	foreach(Layout* l, scopeLookup.values())
+	for(Layout* l: scopeLookup.values())
 		delete l;
 }
 
@@ -59,7 +61,7 @@ void TreeEvaluator::finishLayout()
 void TreeEvaluator::startContext(Scope* scp)
 {
 	Context* parent = context;
-	context = new Context(reporter);
+	context = new Context();
 	context->setParent(parent);
 	context->setCurrentScope(scp);
 	contextStack.push(context);
@@ -72,35 +74,35 @@ void TreeEvaluator::finishContext()
 	context=contextStack.top();
 }
 
-void TreeEvaluator::visit(ModuleScope* scp)
+void TreeEvaluator::visit(const ModuleScope& scp)
 {
 	context->setVariablesFromArguments();
 	context->clearArguments();
 	context->clearParameters();
 
-	foreach(Declaration* d, scp->getDeclarations()) {
+	for(Declaration* d: scp.getDeclarations()) {
 		d->accept(*this);
 	}
 
 	if(context->getReturnValue())
-		reporter->reportWarning(tr("return statement not valid inside module scope."));
+		reporter.reportWarning(tr("return statement not valid inside module scope."));
 }
 
-void TreeEvaluator::visit(Instance* inst)
+void TreeEvaluator::visit(const Instance& inst)
 {
-	QString name = inst->getName();
-	bool aux=(inst->getType()==Instance::Auxilary);
+	QString name = inst.getName();
+	bool aux=(inst.getType()==Instance::Auxilary);
 
 	/* The first step for module invocations is to evaluate all the children if
 	 * there are any, we do this in a seperate context because children can
 	 * have children */
 	Scope* c=context->getCurrentScope();
 	QList<Node*> childnodes;
-	QList <Statement*> stmts = inst->getChildren();
+	QList <Statement*> stmts = inst.getChildren();
 	if(stmts.size()>0) {
 		startContext(c);
 
-		foreach(Statement* s,stmts) {
+		for(Statement* s: stmts) {
 			s->accept(*this);
 		}
 
@@ -111,15 +113,15 @@ void TreeEvaluator::visit(Instance* inst)
 	/* Process the arguments. Arguments can themselves contain references to
 	 * function calls so evaluate them in a different context */
 	startContext(c);
-	foreach(Argument* arg, inst->getArguments())
+	for(Argument* arg: inst.getArguments())
 		arg->accept(*this);
-	QList<Value*> arguments=context->getArguments();
+	auto arguments=context->getArguments();
 	finishContext();
 
 	/* Look up the layout which is currently in scope and then lookup the
 	 * module in that layout */
 	Layout* l=scopeLookup.value(c);
-	Module* mod = l->lookupModule(name,aux);
+	const Module* mod = l->lookupModule(name,aux);
 	if(mod) {
 		/* Now we need to create a context for the module itself, if we are
 		 * invoking a built in module we have to use the current scope to
@@ -134,21 +136,21 @@ void TreeEvaluator::visit(Instance* inst)
 
 		/* Pull the arguments in that we evaluated previously into this
 		 * context */
-		foreach(Value* a, arguments)
+		for(auto a: arguments)
 			context->addArgument(a);
 
-		foreach(Parameter* p, mod->getParameters())
+		for(Parameter* p: mod->getParameters())
 			p->accept(*this);
 
 		/* Invoke the module whether it be a user defined module or a build
 		 * in module */
-		Node* node=NULL;
+		Node* node=nullptr;
 		if(scp) {
 			scp->accept(*this);
 			childnodes=context->getCurrentNodes();
-			node=createUnion(childnodes);
+			node=UnionModule::createUnion(childnodes);
 		} else {
-			node=mod->evaluate(context);
+			node=mod->evaluate(*context);
 		}
 
 		finishContext();
@@ -156,18 +158,18 @@ void TreeEvaluator::visit(Instance* inst)
 			context->addCurrentNode(node);
 
 	} else {
-		reporter->reportWarning(tr("cannot find module '%1%2'").arg(name).arg(aux?"$":""));
+		reporter.reportWarning(tr("cannot find module '%1%2'").arg(name).arg(aux?"$":""));
 	}
 }
 
-void TreeEvaluator::visit(Module* mod)
+void TreeEvaluator::visit(const Module& mod)
 {
 	if(descendDone)
 		return;
 
 	layout->addModule(mod);
 
-	Scope* scp=mod->getScope();
+	Scope* scp=mod.getScope();
 	if(scp) {
 		startLayout(scp);
 		descend(scp);
@@ -176,13 +178,13 @@ void TreeEvaluator::visit(Module* mod)
 
 }
 
-void TreeEvaluator::visit(Function* func)
+void TreeEvaluator::visit(const Function& func)
 {
 	if(descendDone)
 		return;
 
 	layout->addFunction(func);
-	Scope* scp=func->getScope();
+	Scope* scp=func.getScope();
 	if(scp) {
 		startLayout(scp);
 		/* Functions cannot have nested functions,
@@ -193,31 +195,31 @@ void TreeEvaluator::visit(Function* func)
 
 void TreeEvaluator::descend(Scope* scp)
 {
-	foreach(Declaration* d, scp->getDeclarations()) {
-		ScriptImport* i=dynamic_cast<ScriptImport*>(d);
+	for(Declaration* d: scp->getDeclarations()) {
+		auto* i=dynamic_cast<ScriptImport*>(d);
 		if(i)
 			i->accept(*this);
-		Module* m = dynamic_cast<Module*>(d);
+		auto* m = dynamic_cast<Module*>(d);
 		if(m)
 			m->accept(*this);
-		Function* f = dynamic_cast<Function*>(d);
+		auto* f = dynamic_cast<Function*>(d);
 		if(f)
 			f->accept(*this);
 	}
 }
 
-void TreeEvaluator::visit(FunctionScope* scp)
+void TreeEvaluator::visit(const FunctionScope& scp)
 {
 	context->setVariablesFromArguments();
 	context->clearArguments();
 	context->clearParameters();
 
-	Expression* e=scp->getExpression();
+	Expression* e=scp.getExpression();
 	if(e) {
 		e->accept(*this);
 		context->setReturnValue(context->getCurrentValue());
 	} else {
-		foreach(Statement* s, scp->getStatements()) {
+		for(Statement* s: scp.getStatements()) {
 			s->accept(*this);
 			if(context->getReturnValue())
 				break;
@@ -225,91 +227,88 @@ void TreeEvaluator::visit(FunctionScope* scp)
 	}
 }
 
-void TreeEvaluator::visit(CompoundStatement* stmt)
+void TreeEvaluator::visit(const CompoundStatement& stmt)
 {
-	foreach(Statement* s, stmt->getChildren())
+	for(Statement* s: stmt.getChildren())
 		s->accept(*this);
 }
 
-void TreeEvaluator::visit(IfElseStatement* ifelse)
+void TreeEvaluator::visit(const IfElseStatement& ifelse)
 {
-	ifelse->getExpression()->accept(*this);
+	ifelse.getExpression()->accept(*this);
 	Value* v=context->getCurrentValue();
 	if(v->isTrue()) {
-		ifelse->getTrueStatement()->accept(*this);
+		ifelse.getTrueStatement()->accept(*this);
 	} else {
-		Statement* falseStmt=ifelse->getFalseStatement();
+		Statement* falseStmt=ifelse.getFalseStatement();
 		if(falseStmt)
 			falseStmt->accept(*this);
 	}
 }
 
-void TreeEvaluator::visit(ForStatement* forstmt)
+void TreeEvaluator::visit(const ForStatement& forstmt)
 {
-	foreach(Argument* arg, forstmt->getArguments())
+	for(Argument* arg: forstmt.getArguments())
 		arg->accept(*this);
-	QList<Value*> args=context->getArguments();
+	auto args=context->getArguments();
 	context->clearArguments();
 
 	if(!args.isEmpty()) {
 		//TODO for now just consider the first arg.
-		Value* first = args.at(0);
+		auto firstArg = args.at(0);
+		QString name=firstArg.first;
+		Value* val=firstArg.second;
 
-		Iterator<Value*>* i = first->createIterator();
-		for(i->first(); !i->isDone(); i->next()) {
+		ValueIterator* it=val->createIterator();
+		for(Value* v: *it) {
+			context->setVariable(name,v);
 
-			Value* v = i->currentItem();
-			v->setName(first->getName());
-			context->setVariable(v);
-
-			forstmt->getStatement()->accept(*this);
-
+			forstmt.getStatement()->accept(*this);
 		}
-		delete i;
+		delete it;
 	}
 }
 
-void TreeEvaluator::visit(Parameter* param)
+void TreeEvaluator::visit(const Parameter& param)
 {
-	QString name = param->getName();
+	QString name = param.getName();
 
 	Value* v;
-	Expression* e = param->getExpression();
+	Expression* e = param.getExpression();
 	if(e) {
 		e->accept(*this);
 		v = context->getCurrentValue();
 	} else {
-		v = new Value();
+		v = Value::undefined();
 	}
 
-	v->setName(name);
-	context->addParameter(v);
+	context->addParameter(name,v);
 }
 
-void TreeEvaluator::visit(BinaryExpression* exp)
+void TreeEvaluator::visit(const BinaryExpression& exp)
 {
-	exp->getLeft()->accept(*this);
+	exp.getLeft()->accept(*this);
 	Value* left=context->getCurrentValue();
 
 	bool shortc=false;
-	Expression::Operator_e op=exp->getOp();
+	Expression::Operator_e op=exp.getOp();
 
 	switch(op) {
-	case Expression::LogicalAnd:
-		shortc=!left->isTrue();
-		break;
-	case Expression::LogicalOr:
-		shortc=left->isTrue();
-		break;
-	default:
-		break;
+		case Expression::LogicalAnd:
+			shortc=left->isFalse();
+			break;
+		case Expression::LogicalOr:
+			shortc=left->isTrue();
+			break;
+		default:
+			break;
 	}
 
 	Value* result;
 	if(shortc) {
 		result=left;
 	} else {
-		exp->getRight()->accept(*this);
+		exp.getRight()->accept(*this);
 		Value* right=context->getCurrentValue();
 		result=Value::operation(left,op,right);
 	}
@@ -317,164 +316,166 @@ void TreeEvaluator::visit(BinaryExpression* exp)
 	context->setCurrentValue(result);
 }
 
-void TreeEvaluator::visit(Argument* arg)
+void TreeEvaluator::visit(const Argument& arg)
 {
 	QString name;
 	Variable::Storage_e c=Variable::Var;
-	Variable* var = arg->getVariable();
+	Variable* var = arg.getVariable();
 	if(var) {
 		var->accept(*this);
 		name=context->getCurrentName();
 		c=var->getStorage();
 	}
 
-	arg->getExpression()->accept(*this);
-	Value* v = context->getCurrentValue();
-	v->setName(name);
-	v->setStorage(c); //TODO Investigate moving this to apply to all variables.
-	context->addArgument(v);
+	Expression* exp=arg.getExpression();
+	if(exp) {
+		exp->accept(*this);
+		Value* v = context->getCurrentValue();
+		v->setStorage(c); //TODO Investigate moving this to apply to all variables.
+		context->addArgument(name,v);
+	}
 }
 
-void TreeEvaluator::visit(AssignStatement* stmt)
+void TreeEvaluator::visit(const AssignStatement& stmt)
 {
-	stmt->getVariable()->accept(*this);
+	stmt.getVariable()->accept(*this);
 	QString name = context->getCurrentName();
 
 	Value* lvalue = context->getCurrentValue();
 
-	Value* result=NULL;
-	Expression::Operator_e op=stmt->getOperation();
+	Value* result=nullptr;
+	Expression::Operator_e op=stmt.getOperation();
 	switch(op) {
-	case Expression::Increment:
-	case Expression::Decrement:
-		break;
-	default: {
-		Expression* expression = stmt->getExpression();
-		if(expression) {
-			expression->accept(*this);
-			result = context->getCurrentValue();
+		case Expression::Increment:
+		case Expression::Decrement:
+			break;
+		default: {
+			Expression* expression = stmt.getExpression();
+			if(expression) {
+				expression->accept(*this);
+				result = context->getCurrentValue();
+			}
 		}
 	}
-	}
 
 	switch(op) {
-	case Expression::Append:
-	case Expression::AddAssign:
-	case Expression::SubAssign: {
-		result=Value::operation(lvalue,op,result);
-		break;
+		case Expression::Append:
+		case Expression::AddAssign:
+		case Expression::SubAssign: {
+			result=Value::operation(lvalue,op,result);
+			break;
+		}
+		case Expression::Increment: {
+			result=Value::operation(lvalue,op);
+			break;
+		}
+		case Expression::Decrement: {
+			result=Value::operation(lvalue,op);
+			break;
+		}
+		default:
+			break;
 	}
-	case Expression::Increment: {
-		result=Value::operation(lvalue,op);
-		break;
-	}
-	case Expression::Decrement: {
-		result=Value::operation(lvalue,op);
-		break;
-	}
-	default:
-		break;
-	}
+	if(!result) return;
 
-	result->setName(name);
 	Variable::Storage_e c;
 	c=lvalue->getStorage();
 	result->setStorage(c);
 	switch(c) {
-	case Variable::Const:
-		if(!context->addVariable(result))
-			reporter->reportWarning(tr("attempt to alter constant variable '%1'").arg(name));
-		break;
-	case Variable::Param:
-		if(!context->addVariable(result))
-			reporter->reportWarning(tr("attempt to alter parametric variable '%1'").arg(name));
-		break;
-	default:
-		context->setVariable(result);
-		break;
+		case Variable::Const:
+			if(!context->addVariable(name,result))
+				reporter.reportWarning(tr("attempt to alter constant variable '%1'").arg(name));
+			break;
+		case Variable::Param:
+			if(!context->addVariable(name,result))
+				reporter.reportWarning(tr("attempt to alter parametric variable '%1'").arg(name));
+			break;
+		default:
+			context->setVariable(name,result);
+			break;
 	}
 }
 
-void TreeEvaluator::visit(VectorExpression* exp)
+void TreeEvaluator::visit(const VectorExpression& exp)
 {
 	QList<Value*> childvalues;
-	foreach(Expression* e, exp->getChildren()) {
+	for(Expression* e: exp.getChildren()) {
 		e->accept(*this);
 		childvalues.append(context->getCurrentValue());
 	}
-	int commas=exp->getAdditionalCommas();
+	int commas=exp.getAdditionalCommas();
 	if(commas>0)
-		reporter->reportWarning(tr("%1 additional comma(s) found at the end of vector expression").arg(commas));
+		reporter.reportWarning(tr("%1 additional comma(s) found at the end of vector expression").arg(commas));
 
 	Value* v = new VectorValue(childvalues);
 	context->setCurrentValue(v);
 }
 
-void TreeEvaluator::visit(RangeExpression* exp)
+void TreeEvaluator::visit(const RangeExpression& exp)
 {
-	exp->getStart()->accept(*this);
+	exp.getStart()->accept(*this);
 	Value* start = context->getCurrentValue();
 
-	Value* increment = NULL;
-	Expression* step = exp->getStep();
+	Value* increment = nullptr;
+	Expression* step = exp.getStep();
 	if(step) {
 		step->accept(*this);
 		increment=context->getCurrentValue();
 	}
 
-	exp->getFinish()->accept(*this);
+	exp.getFinish()->accept(*this);
 	Value* finish=context->getCurrentValue();
 
 	Value* result = new RangeValue(start,increment,finish);
 	context->setCurrentValue(result);
 }
 
-void TreeEvaluator::visit(UnaryExpression* exp)
+void TreeEvaluator::visit(const UnaryExpression& exp)
 {
-	exp->getExpression()->accept(*this);
+	exp.getExpression()->accept(*this);
 	Value* left=context->getCurrentValue();
 
-	Value* result = Value::operation(left,exp->getOp());
+	Value* result = Value::operation(left,exp.getOp());
 
 	context->setCurrentValue(result);
 }
 
-void TreeEvaluator::visit(ReturnStatement* stmt)
+void TreeEvaluator::visit(const ReturnStatement& stmt)
 {
-	Expression* e = stmt->getExpression();
+	Expression* e = stmt.getExpression();
 	e->accept(*this);
 	context->setReturnValue(context->getCurrentValue());
 }
 
-void TreeEvaluator::visit(TernaryExpression* exp)
+void TreeEvaluator::visit(const TernaryExpression& exp)
 {
-	exp->getCondition()->accept(*this);
+	exp.getCondition()->accept(*this);
 	Value* v = context->getCurrentValue();
 	if(v->isTrue())
-		exp->getTrueExpression()->accept(*this);
+		exp.getTrueExpression()->accept(*this);
 	else
-		exp->getFalseExpression()->accept(*this);
+		exp.getFalseExpression()->accept(*this);
 
 }
 
-void TreeEvaluator::visit(Invocation* stmt)
+void TreeEvaluator::visit(const Invocation& stmt)
 {
-	QString name = stmt->getName();
+	QString name = stmt.getName();
 
 	Scope* c=context->getCurrentScope();
 	/* Process the arguments first. Arguments can themselves contain references
 	 * to function calls so evaluate them in a different context */
 	startContext(c);
-	foreach(Argument* arg, stmt->getArguments())
+	for(Argument* arg: stmt.getArguments())
 		arg->accept(*this);
-	QList<Value*> arguments=context->getArguments();
+	auto arguments=context->getArguments();
 	finishContext();
 
-	Value* result=NULL;
+	Value* result=nullptr;
 	/* Look up the layout which is currently in scope and then lookup the
 	 * function in that layout */
 	Layout* l = scopeLookup.value(c);
-	Function* func = l->lookupFunction(name);
+	const Function* func = l->lookupFunction(name);
 	if(func) {
 
 		/* Now we need to create a context for the function itself, if we are
@@ -488,10 +489,10 @@ void TreeEvaluator::visit(Invocation* stmt)
 
 		/* Pull the arguments in that we evaluated previously into this
 		 * context */
-		foreach(Value* a, arguments)
+		for(auto a: arguments)
 			context->addArgument(a);
 
-		foreach(Parameter* p, func->getParameters())
+		for(Parameter* p: func->getParameters())
 			p->accept(*this);
 
 		/* Invoke the function whether it be a user defined function or a build
@@ -500,148 +501,158 @@ void TreeEvaluator::visit(Invocation* stmt)
 			scp->accept(*this);
 			result=context->getReturnValue();
 		} else {
-			result=func->evaluate(context);
+			result=func->evaluate(*context);
 		}
 
 		finishContext();
 
 	} else {
-		reporter->reportWarning(tr("cannot find function '%1'").arg(name));
+		reporter.reportWarning(tr("cannot find function '%1'").arg(name));
 	}
 
 	if(!result)
-		result=new Value();
+		result=Value::undefined();
 
 	context->setCurrentValue(result);
 }
 
-void TreeEvaluator::visit(Callback* c)
+void TreeEvaluator::visit(Callback& c)
 {
-	Expression* e = c->getExpression();
+	Expression* e = c.getExpression();
 	e->accept(*this);
-	c->setResult(context->getCurrentValue());
+	c.setResult(context->getCurrentValue());
 }
 
-void TreeEvaluator::visit(ModuleImport* imp)
+QFileInfo TreeEvaluator::getFullPath(const QString &file)
 {
-	ImportModule* mod=new ImportModule();
-	mod->setImport(imp->getImport());
-	mod->setName(imp->getName());
+	if(!importLocations.isEmpty())
+		return QFileInfo(importLocations.top(),file);
+	else
+		return QFileInfo(file); /* relative to working dir */
+}
+
+void TreeEvaluator::visit(const ModuleImport& mi)
+{
+	auto* mod=new ImportModule(reporter);
+	QFileInfo f=getFullPath(mi.getImport());
+	mod->setImport(f.absoluteFilePath());
+	mod->setName(mi.getName());
 	//TODO global import args.
 
 	/* Adding the import module to the current layout is ok here because we
 	 * assume import statements are at the top level, and that we will be at
 	 * the top level at this point */
-	layout->addModule(mod);
+	layout->addModule(*mod);
 }
 
-void TreeEvaluator::visit(ScriptImport* sc)
+void TreeEvaluator::visit(const ScriptImport& sc)
 {
 	if(descendDone)
 		return;
 
-	QString imp=sc->getImport();
-	QFileInfo* f;
-	if(!importLocations.isEmpty())
-		f=new QFileInfo(importLocations.top()->absoluteDir(),imp);
-	else
-		f=new QFileInfo(imp); /* relative to working dir */
-
-	Script* s=parse(f->absoluteFilePath(),reporter,true);
+	QFileInfo f=getFullPath(sc.getImport());
+	Script* s=new Script(reporter);
+	s->parse(f);
 	imports.append(s);
 	/* Now recursively descend any modules functions or script imports within
 	 * the imported script and add them to the main script */
-	importLocations.push(f);
+	QDir loc=f.absoluteDir();
+	importLocations.push(loc);
 	descend(s);
-	delete importLocations.pop();
+	importLocations.pop();
 }
 
-void TreeEvaluator::visit(Literal* lit)
+void TreeEvaluator::visit(const Literal& lit)
 {
-	Value* v= lit->getValue();
+	Value* v= lit.getValue();
 
 	context->setCurrentValue(v);
 }
 
-void TreeEvaluator::visit(Variable* var)
+void TreeEvaluator::visit(const Variable& var)
 {
-	QString name = var->getName();
-	Variable::Storage_e oldStorage=var->getStorage();
+	QString name = var.getName();
+	Variable::Storage_e oldStorage=var.getStorage();
 	Variable::Storage_e currentStorage=oldStorage;
 	Layout* l=scopeLookup.value(context->getCurrentScope());
 	Value* v=context->lookupVariable(name,currentStorage,l);
 	if(currentStorage!=oldStorage)
 		switch(oldStorage) {
-		case Variable::Const:
-			reporter->reportWarning(tr("attempt to make previously non-constant variable '%1' constant").arg(name));
-			break;
-		case Variable::Param:
-			reporter->reportWarning(tr("attempt to make previously non-parametric variable '%1' parametric").arg(name));
-			break;
-		default:
-			break;
+			case Variable::Const:
+				reporter.reportWarning(tr("attempt to make previously non-constant variable '%1' constant").arg(name));
+				break;
+			case Variable::Param:
+				reporter.reportWarning(tr("attempt to make previously non-parametric variable '%1' parametric").arg(name));
+				break;
+			default:
+				break;
 		}
 
 	context->setCurrentValue(v);
 	context->setCurrentName(name);
 }
 
-Node* TreeEvaluator::createUnion(QList<Node*> childnodes)
-{
-	if(childnodes.size()==1) {
-		return childnodes.at(0);
-	} else {
-		UnionNode* u=new UnionNode();
-		u->setChildren(childnodes);
-		return u;
-	}
-}
-
-void TreeEvaluator::visit(CodeDoc*)
+void TreeEvaluator::visit(const CodeDoc&)
 {
 }
 
-void TreeEvaluator::visit(Script* sc)
+void TreeEvaluator::visit(Script& sc)
 {
-	BuiltinCreator* b=BuiltinCreator::getInstance(reporter->output);
+	BuiltinCreator* b=BuiltinCreator::getInstance(reporter);
 	b->initBuiltins(sc);
 
 	/* Use the location of the current script as the root for all imports */
-	QFileInfo* info=sc->getFileLocation();
-	if(info)
-		importLocations.push(info);
+	QDir loc=sc.getFileLocation();
+	importLocations.push(loc);
 
+	Script* scp=&sc;
 	descendDone=false;
-	startLayout(sc);
-	descend(sc);
+	startLayout(scp);
+	descend(scp);
 	descendDone=true;
 
-	startContext(sc);
-	foreach(Declaration* d, sc->getDeclarations()) {
+	startContext(scp);
+	for(Declaration* d: sc.getDeclarations()) {
 		d->accept(*this);
 	}
 	QList<Node*> childnodes=context->getCurrentNodes();
 
 	if(context->getReturnValue())
-		reporter->reportWarning(tr("return statement not valid inside global scope."));
+		reporter.reportWarning(tr("return statement not valid inside global scope."));
 
-	rootNode=createUnion(childnodes);
+	rootNode=UnionModule::createUnion(childnodes);
 
 	/* Clean up all the imported scripts as its not the responsibility of the
 	 * caller to do so as we created the imported script instances within this
 	 * evaluator */
-	foreach(Script* sc, imports)
+	for(Script* sc: imports)
 		delete sc;
 
 	b->saveBuiltins(sc);
 }
 
-void TreeEvaluator::visit(Product* p)
+void TreeEvaluator::visit(Product& p)
 {
-	Node* r=p->evaluate(context);
+	Node* r=p.evaluate(context);
 	QList<Node*> childnodes=context->getCurrentNodes();
 	childnodes.append(r);
 	context->setCurrentNodes(childnodes);
+}
+
+void TreeEvaluator::visit(const ComplexExpression& exp)
+{
+	Expression* real=exp.getReal();
+	real->accept(*this);
+	Value* result=context->getCurrentValue();
+
+	VectorExpression* imaginary=exp.getImaginary();
+	QList<Value*> childvalues;
+	for(Expression* e: imaginary->getChildren()) {
+		e->accept(*this);
+		childvalues.append(context->getCurrentValue());
+	}
+	Value* v = new ComplexValue(result,childvalues);
+	context->setCurrentValue(v);
 }
 
 Node* TreeEvaluator::getRootNode() const

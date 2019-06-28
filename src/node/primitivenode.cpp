@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,38 +18,40 @@
 
 #include "primitivenode.h"
 #include "polyhedron.h"
+#ifdef USE_CGAL
+#include "cgalprimitive.h"
+#endif
 
-PrimitiveNode::PrimitiveNode()
+PrimitiveNode::PrimitiveNode(Reporter&) :
+	primitive(nullptr)
 {
-	primitive=new Polyhedron();
 }
 
 PrimitiveNode::~PrimitiveNode()
 {
-	delete primitive;
 }
 
-Polygon* PrimitiveNode::createPolygon()
-{
-	return primitive->createPolygon();
-}
-
-void PrimitiveNode::createVertex(decimal x, decimal y, decimal z)
-{
-	createVertex(Point(x,y,z));
-}
-
-void PrimitiveNode::createVertex(Point p)
-{
-	primitive->createVertex(p);
-}
-
-Primitive* PrimitiveNode::getPrimitive()
+Primitive* PrimitiveNode::getPrimitive() const
 {
 	return primitive;
 }
 
+Primitive* PrimitiveNode::createPrimitive()
+{
+#ifdef USE_CGAL
+	primitive=new CGALPrimitive();
+#else
+	primitive=new Polyhedron();
+#endif
+	return primitive;
+}
+
+void PrimitiveNode::setPrimitive(Primitive* value)
+{
+	primitive = value;
+}
+
 void PrimitiveNode::accept(NodeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

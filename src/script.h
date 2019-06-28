@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,25 +28,27 @@
 class Script : public Scope
 {
 public:
-	Script();
-	~Script();
+	Script(Reporter&);
+	~Script() override;
 
-	void setDeclarations(QList<Declaration*>);
-	QList<Declaration*> getDeclarations() const;
+	void parse(const QString&);
+	void parse(QFileInfo);
+
+	void setDeclarations(const QList<Declaration*>&);
+	QList<Declaration*> getDeclarations() const override;
 	void addDeclaration(Declaration*);
 	void appendDeclaration(Declaration*);
 	void removeDeclaration(Declaration*);
-	void addDocumentation(QList<CodeDoc*>);
-	QList<QList<CodeDoc*> > getDocumentation();
-	void accept(TreeVisitor&);
-	QFileInfo* getFileLocation() const;
-	void setFileLocation(QFileInfo*);
+	void addDocumentation(const QList<CodeDoc*>&);
+	QList<QList<CodeDoc*> > getDocumentation() const;
+	void accept(TreeVisitor&) override;
+	QDir getFileLocation() const;
+	void setFileLocation(QDir);
 private:
 	QList<Declaration*> declarations;
 	QList<QList<CodeDoc*> > documentation;
-	QFileInfo* fileLocation;
+	QDir fileLocation;
+	Reporter& reporter;
 };
-
-extern Script* parse(QString,Reporter*,bool);
 
 #endif // SCRIPT_H

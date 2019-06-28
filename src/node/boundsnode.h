@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,13 +19,13 @@
 #ifndef BOUNDSNODE_H
 #define BOUNDSNODE_H
 
-#include "auxilarynode.h"
+#include "node.h"
 
-class BoundsNode : public AuxilaryNode
+class BoundsNode : public Node
 {
 public:
 	BoundsNode();
-	void accept(NodeVisitor&);
+	void accept(NodeVisitor&) override;
 };
 
 #endif // BOUNDSNODE_H

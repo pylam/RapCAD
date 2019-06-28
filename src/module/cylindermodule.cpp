@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,40 +16,40 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "cylindermodule.h"
 #include "context.h"
 #include "numbervalue.h"
 #include "booleanvalue.h"
 #include "node/primitivenode.h"
-#include "tau.h"
+#include "rmath.h"
 
-CylinderModule::CylinderModule() : PrimitiveModule("cylinder")
+CylinderModule::CylinderModule(Reporter& r) : PrimitiveModule(r,"cylinder")
 {
-	addParameter("height");
-	addParameter("radius");
-	addParameter("center");
+	addDescription(tr("Constructs a cylinder. It will be placed centered on the xy plane."));
+	addParameter("height",tr("The height of the cylinder"));
+	addParameter("radius",tr("The radius of the cylinder"));
+	addParameter("center",tr("Specifies whether to center the cylinder vertically along the z axis."));
 }
 
-Node* CylinderModule::evaluate(Context* ctx)
+Node* CylinderModule::evaluate(const Context& ctx) const
 {
-	NumberValue* heightValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
+	auto* heightValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
 	decimal h=1.0;
 	if(heightValue)
 		h=heightValue->getNumber();
 
-	NumberValue* r1Value = dynamic_cast<NumberValue*>(ctx->getArgument(1,"radius1"));
-	NumberValue* r2Value = dynamic_cast<NumberValue*>(ctx->getArgument(2,"radius2"));
+	NumberValue* r1Value = dynamic_cast<NumberValue*>(ctx.getArgument(1,"radius1"));
+	NumberValue* r2Value = dynamic_cast<NumberValue*>(ctx.getArgument(2,"radius2"));
 	BooleanValue* centerValue;
 
 	decimal r1=1.0,r2=1.0;
 	if(!r1Value) {
-		NumberValue* rValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
+		auto* rValue = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
 		centerValue = dynamic_cast<BooleanValue*>(getParameterArgument(ctx,2));
 		if(rValue) {
 			r1=r2=rValue->getNumber();
 		} else {
-			NumberValue* dValue = dynamic_cast<NumberValue*>(ctx->getArgument(1,"diameter"));
+			NumberValue* dValue = dynamic_cast<NumberValue*>(ctx.getArgument(1,"diameter"));
 			if(dValue)
 				r1=r2=(dValue->getNumber()/2.0);
 		}
@@ -60,7 +60,7 @@ Node* CylinderModule::evaluate(Context* ctx)
 			r2=r2Value->getNumber();
 		else
 			r2=r1;
-		centerValue = dynamic_cast<BooleanValue*>(ctx->getArgument(3,"center"));
+		centerValue = dynamic_cast<BooleanValue*>(ctx.getArgument(3,"center"));
 	}
 	bool center = false;
 	if(centerValue)
@@ -70,31 +70,34 @@ Node* CylinderModule::evaluate(Context* ctx)
 	z1 = 0.0;
 	z2 = h;
 
-	decimal r=fmax(r1,r2);
-	Fragment fg=getSpecialVariables(ctx);
-	int f = fg.getFragments(r);
+	decimal r=r_max(r1,r2);
+	Fragment* fg = Fragment::createFragment(ctx);
+	int f = fg->getFragments(r);
+	delete fg;
 
 	QList<Point> c1=getCircle(r1,f,z1);
 	QList<Point> c2=getCircle(r2,f,z2);
 
-	PrimitiveNode* p = new PrimitiveNode();
+	auto* pn=new PrimitiveNode(reporter);
+	Primitive* p=pn->createPrimitive();
+	pn->setChildren(ctx.getInputNodes());
 
 	int n=0;
 	Polygon* pg;
 	if(r1>0) {
 		pg=p->createPolygon();
-		foreach(Point pt,c1) {
+		for(const auto& pt: c1) {
 			p->createVertex(pt);
 			pg->append(n++);
 		}
 	}
 
 	if(h==0.0)
-		return p;
+		return pn;
 
 	if(r2>0) {
 		pg=p->createPolygon();
-		foreach(Point pt,c2) {
+		for(const auto& pt: c2) {
 			p->createVertex(pt);
 			pg->prepend(n++);
 		}
@@ -103,11 +106,11 @@ Node* CylinderModule::evaluate(Context* ctx)
 	/* In the cases where r1 or r2 are 0,  n will now convinently be pointing
 	 * one past the end, and point to the apex as defined here when needed */
 	if(r1<=0)
-		p->createVertex(0.0,0.0,z1);
+		p->createVertex(Point(0.0,0.0,z1));
 	if(r2<=0)
-		p->createVertex(0.0,0.0,z2);
+		p->createVertex(Point(0.0,0.0,z2));
 
-	for(int i=0; i<f; ++i) {
+	for(auto i=0; i<f; ++i) {
 		int j=(i+1)%f;
 
 		int k=r2<=0?n:i;
@@ -141,11 +144,11 @@ Node* CylinderModule::evaluate(Context* ctx)
 	}
 
 	if(center) {
-		AlignNode* n=new AlignNode();
-		n->setCenter(true);
-		n->addChild(p);
-		return n;
+		auto* an=new AlignNode();
+		an->setCenterVertical();
+		an->addChild(pn);
+		return an;
 	}
 
-	return p;
+	return pn;
 }

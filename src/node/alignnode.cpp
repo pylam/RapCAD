@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,24 +18,30 @@
 
 #include "alignnode.h"
 
-AlignNode::AlignNode()
+AlignNode::AlignNode() :
+	center(false)
 {
-	center=false;
 }
 
 void AlignNode::accept(NodeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }
 
 bool AlignNode::getCenter() const
 {
-    return center;
+	return center;
 }
 
 void AlignNode::setCenter(bool value)
 {
-    center = value;
+	center = value;
+}
+
+void AlignNode::setCenterVertical()
+{
+	align.append(Top);
+	align.append(Bottom);
 }
 
 QList<AlignNode::Face_t> AlignNode::getAlign() const
@@ -43,7 +49,7 @@ QList<AlignNode::Face_t> AlignNode::getAlign() const
 	return align;
 }
 
-void AlignNode::setAlign(const QList<Face_t> &value)
+void AlignNode::setAlign(const QList<Face_t>& value)
 {
 	align = value;
 }

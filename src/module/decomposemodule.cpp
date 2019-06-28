@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
 #include "context.h"
 #include "node/decomposenode.h"
 
-DecomposeModule::DecomposeModule() : Module("decompose")
+DecomposeModule::DecomposeModule(Reporter& r) : Module(r,"decompose")
 {
+	addDescription(tr("Decomposes its children into convex geometry."));
 }
 
-Node *DecomposeModule::evaluate(Context* ctx)
+Node* DecomposeModule::evaluate(const Context& ctx) const
 {
-	DecomposeNode* n=new DecomposeNode();
-	n->setChildren(ctx->getInputNodes());
+	auto* n=new DecomposeNode();
+	n->setChildren(ctx.getInputNodes());
 	return n;
 }

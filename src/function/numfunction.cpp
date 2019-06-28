@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,11 +22,12 @@
 
 NumFunction::NumFunction() : Function("num")
 {
+	addDescription(tr("Converts the value to a number value."));
 	addParameter("value");
 }
 
-Value* NumFunction::evaluate(Context* ctx)
+Value* NumFunction::evaluate(const Context& ctx) const
 {
-	Value* v=this->getParameterArgument(ctx,0);
+	Value* v=getParameterArgument(ctx,0);
 	return v->toNumber();
 }

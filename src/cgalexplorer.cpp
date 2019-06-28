@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,25 +15,21 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#if USE_CGAL
+#ifdef USE_CGAL
 #include "cgalexplorer.h"
 #include <QMap>
 #include <CGAL/config.h>
-#include <CGAL/normal_vector_newell_3.h>
 #include <CGAL/Triangulation_3.h>
 #include <CGAL/centroid.h>
+#include <CGAL/bounding_box.h>
 #include "onceonly.h"
 
-CGALExplorer::CGALExplorer(Primitive* p)
+CGALExplorer::CGALExplorer(Primitive* p) :
+	evaluated(false),
+	primitive(nullptr),
+	perimeters(nullptr),
+	nef(static_cast<CGALPrimitive*>(p)->getNefPolyhedron())
 {
-	primitive=static_cast<CGALPrimitive*>(p);
-	evaluated=false;
-}
-
-CGALExplorer::CGALExplorer(CGALPrimitive* p)
-{
-	primitive=p;
-	evaluated=false;
 }
 
 typedef CGAL::NefPolyhedron3 Nef;
@@ -66,8 +62,9 @@ class ShellExplorer
 		return h<t?h:t;
 	}
 
-	bool isBase(CGAL::Vector3 v)
+	bool isBase(CGALPolygon* p)
 	{
+		CGAL::Vector3 v=p->getNormal();
 		return (v.x()==0&&v.y()==0)&&direction?v.z()<0:v.z()>0;
 	}
 
@@ -77,12 +74,13 @@ class ShellExplorer
 	QMap<HalfEdgeHandle,int> periMap;
 	QList<CGALPolygon*> basePolygons;
 public:
-	ShellExplorer() {
-		primitive = new CGALPrimitive();
+	ShellExplorer(CGALPrimitive* p) : primitive(p)
+	{
 		direction=true;
 	}
 
-	void visit(VertexHandle v) {
+	void visit(VertexHandle v)
+	{
 		points.append(v->point());
 	}
 
@@ -91,30 +89,33 @@ public:
 	{
 		bool facet = !f->is_twin();
 		if(facet) {
-			CGALPolygon* pg=static_cast<CGALPolygon*>(primitive->createPolygon());
-			CGAL::Vector3 v = f->plane().orthogonal_vector();
-			if(isBase(v))
-				basePolygons.append(pg);
-			pg->setNormal(v);
+			OnceOnly first;
 			HalfFacetCycleIterator fc;
 			CGAL_forall_facet_cycles_of(fc,f) {
+				/* When there is more than one facet cycle we have holes */
+				if(!first())
+					primitive->setSanitized(false);
+
 				if(fc.is_shalfedge()) {
+					auto* pg=primitive->createCGALPolygon();
+					pg->setPlane(f->plane());
+					if(isBase(pg))
+						basePolygons.append(pg);
+
 					SHalfEdgeHandle h = fc;
 					SHalfEdgeCirculator hc(h), he(hc);
 					CGAL_For_all(hc,he) {
 						SVertexHandle sv = hc->source();
 						CGAL::Point3 sp = sv->source()->point();
-						if(direction)
-							primitive->appendVertex(sp);
-						else
-							primitive->prependVertex(sp);
+						primitive->addVertex(sp,direction);
 					}
 				}
 			}
 		}
 	}
 
-	void visit(SHalfEdgeHandle hc) {
+	void visit(SHalfEdgeHandle hc)
+	{
 		HalfEdgeHandle h = getID(hc->source());
 		periMap[h]++;
 	}
@@ -137,11 +138,6 @@ public:
 		direction=false;
 	}
 
-	CGALPrimitive* getPrimitive()
-	{
-		return primitive;
-	}
-
 	QMap<HalfEdgeHandle,int> getPerimeterMap()
 	{
 		return periMap;
@@ -155,26 +151,26 @@ public:
 
 static HalfEdgeHandle findNewEdge(QList<HalfEdgeHandle> visited,QList<HalfEdgeHandle> edges)
 {
-	foreach(HalfEdgeHandle h, edges)
+	for(HalfEdgeHandle h: edges)
 		if(!visited.contains(h) && !visited.contains(h->twin()))
 			return h;
 
-	return NULL;
+	return nullptr;
 }
 
-void CGALExplorer::evaluate()
+void CGALExplorer::explore()
 {
-	const CGAL::NefPolyhedron3& poly=primitive->getNefPolyhedron();
-	ShellExplorer se;
+	primitive=new CGALPrimitive();
+	ShellExplorer se(primitive);
 	VolumeIterator vi;
 	OnceOnly first_v;
-	CGAL_forall_volumes(vi,poly) {
+	CGAL_forall_volumes(vi,nef) {
 		ShellEntryIterator si;
 		CGAL_forall_shells_of(si,vi) {
 			/* In the list of shells of a volume, the first one is always the
 			 * enclosing shell. In case of the outer volume, there is no outer
 			 * shell. */
-			poly.visit_shell_objects(SFaceHandle(si),se);
+			nef.visit_shell_objects(SFaceHandle(si),se);
 		}
 
 		QList<CGAL::Point3> points=se.getPoints();
@@ -192,7 +188,6 @@ void CGALExplorer::evaluate()
 		}
 	}
 
-	primitive=se.getPrimitive();
 	basePolygons=se.getBase();
 	QMap<HalfEdgeHandle,int> periMap=se.getPerimeterMap();
 
@@ -214,8 +209,8 @@ void CGALExplorer::evaluate()
 		 * order. We check that we didnt reverse direction and if
 		 * we did we walk along the twin edge. */
 		perimeters=new CGALPrimitive();
-		perimeters->setType(Primitive::Skeleton);
-		CGALPolygon* poly=static_cast<CGALPolygon*>(perimeters->createPolygon());
+		perimeters->setType(Primitive::Lines);
+		auto* poly=perimeters->createCGALPolygon();
 		HalfEdgeHandle f=outEdges.first();
 		HalfEdgeHandle c=f;
 		QList<HalfEdgeHandle> visited;
@@ -223,9 +218,9 @@ void CGALExplorer::evaluate()
 		bool twin=true;
 		bool first=true;
 		do {
-			foreach(HalfEdgeHandle h,outEdges) {
+			for(HalfEdgeHandle h: outEdges) {
 				if(twin) h=h->twin();
-				if(c!=NULL && h!=c && h!=c->twin()) {
+				if(c!=nullptr && h!=c && h!=c->twin()) {
 					CGAL::Point3 cp=c->target()->point();
 					CGAL::Point3 np=h->source()->point();
 					if(cp==np) {
@@ -241,20 +236,13 @@ void CGALExplorer::evaluate()
 
 						if(h==f) {
 							perimeters->appendVertex(fp);
-
-							//Calculate the normal of the perimeter polygon
-							CGAL::Vector3 v;
-							QList<CGAL::Point3> pts=poly->getPoints();
-							CGAL::normal_vector_newell_3(pts.begin(),pts.end(),v);
-							poly->setNormal(v);
+							poly->calculatePlane();
 
 							f=findNewEdge(visited,outEdges);
-							if(f==NULL) {
-								evaluated=true;
+							if(f==nullptr)
 								return;
-							}
 
-							poly=static_cast<CGALPolygon*>(perimeters->createPolygon());
+							poly=perimeters->createCGALPolygon();
 							c=f;
 							first=true;
 						}
@@ -264,7 +252,13 @@ void CGALExplorer::evaluate()
 			twin=!twin;
 		} while(visited.size()<outEdges.size());
 	}
+}
 
+void CGALExplorer::evaluate()
+{
+	explore();
+	if(perimeters)
+		perimeters->detectHoles(false);
 	evaluated=true;
 }
 
@@ -277,6 +271,12 @@ CGALPrimitive* CGALExplorer::getPerimeters()
 CGALPrimitive* CGALExplorer::getPrimitive()
 {
 	if(!evaluated) evaluate();
+
+	if(!primitive->getSanitized()) {
+		primitive->triangulate();
+		primitive->setSanitized(true);
+	}
+
 	return primitive;
 }
 
@@ -307,9 +307,9 @@ CGALVolume CGALExplorer::getVolume(bool calcMass)
 	typedef Triangulation::Cell_handle CellHandle;
 	typedef Triangulation::Tetrahedron Tetrahedron;
 
-	CGAL::FT total=0;
+	CGAL::Scalar total=0;
 	QList<Tetrahedron> volumes;
-	foreach(Points pts, volumePoints) {
+	for(const auto& pts: volumePoints) {
 		Triangulation tr(pts.begin(),pts.end());
 		CellIterator ci;
 		for(ci=tr.finite_cells_begin(); ci!=tr.finite_cells_end(); ++ci) {
@@ -320,7 +320,7 @@ CGALVolume CGALExplorer::getVolume(bool calcMass)
 	}
 	if(!calcMass) {
 		CGAL::Cuboid3 b=getBounds();
-		CGAL::FT cx=0.0,cy=0.0,cz=0.0;
+		CGAL::Scalar cx=0.0,cy=0.0,cz=0.0;
 		cx=(b.xmin()+b.xmax())/2;
 		cy=(b.ymin()+b.ymax())/2;
 		cz=(b.zmin()+b.zmax())/2;

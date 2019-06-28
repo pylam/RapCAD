@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,21 +17,23 @@
  */
 
 #include "radfunction.h"
+#include "context.h"
 #include "numbervalue.h"
-#include "tau.h"
+#include "rmath.h"
 
 RadFunction::RadFunction() : Function("rad")
 {
+	addDescription(tr("Returns the number of radians for the given number of degrees."));
 	addParameter("degrees");
 }
 
-Value* RadFunction::evaluate(Context* ctx)
+Value* RadFunction::evaluate(const Context& ctx) const
 {
-	NumberValue* numVal=dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
+	auto* numVal=dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
 	if(numVal) {
 		decimal num=numVal->getNumber();
 
-		return new NumberValue(num*M_TAU/360.0);
+		return new NumberValue(r_rad(num));
 	}
-	return new Value();
+	return Value::undefined();
 }

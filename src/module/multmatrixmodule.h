@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,9 +23,10 @@
 
 class MultMatrixModule : public Module
 {
+	Q_DECLARE_TR_FUNCTIONS(MultMatrixModule)
 public:
-	MultMatrixModule();
-	Node* evaluate(Context*);
+	explicit MultMatrixModule(Reporter&);
+	Node* evaluate(const Context&) const override;
 };
 
 #endif // MULTMATRIXMODULE_H

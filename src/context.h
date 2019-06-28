@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -30,62 +30,64 @@ class Context
 {
 	Q_DECLARE_TR_FUNCTIONS(Context)
 public:
-	Context(Reporter*);
+	Context();
 	virtual ~Context();
 
 	void setParent(Context*);
 
 	void setCurrentScope(Scope*);
-	Scope* getCurrentScope();
+	Scope* getCurrentScope() const;
 
 	void setReturnValue(Value*);
-	Value* getReturnValue();
+	Value* getReturnValue() const;
 
-	Value* getCurrentValue();
+	Value* getCurrentValue() const;
 	void setCurrentValue(Value*);
 
-	QString getCurrentName();
-	void setCurrentName(QString);
+	QString getCurrentName() const;
+	void setCurrentName(const QString&);
 
-	Value* lookupVariable(QString,Variable::Storage_e&,Layout*);
-	bool addVariable(Value*);
-	void setVariable(Value*);
+	Value* lookupVariable(const QString&,Variable::Storage_e&,Layout*) const;
+	bool addVariable(const QString&,Value*);
+	void setVariable(const QString&,Value*);
 
-	Node* lookupChild(int);
+	Node* lookupChild(int) const;
+	QList<Node*> lookupChildren() const;
 
 	void setVariablesFromArguments();
-	QList<Value*> getArguments();
-	void addArgument(Value*);
+	QList<QPair<QString,Value*>> getArguments() const;
+	QList<Value*> getArgumentValues() const;
+	void addArgument(const QString&, Value*);
+	void addArgument(QPair<QString,Value*>);
 	void clearArguments();
 
-	Value* getArgument(int,QString);
-	Value* getArgumentSpecial(QString);
-	Value* getArgumentDeprecated(int,QString,QString);
-	Value* getArgumentDeprecatedModule(int,QString,QString);
+	Value* getArgument(int,const QString&) const;
+	Value* getArgumentSpecial(const QString&) const;
+	Value* getArgumentDeprecated(int, const QString&, const QString&, Reporter&) const;
+	Value* getArgumentDeprecatedModule(int, const QString&, const QString&, Reporter&) const;
 
 	void clearParameters();
-	void addParameter(Value*);
+	void addParameter(const QString&, Value*);
 
-	void setInputNodes(QList<Node*>);
-	QList<Node*> getInputNodes();
+	void setInputNodes(const QList<Node*>&);
+	QList<Node*> getInputNodes() const;
 
-	void setCurrentNodes(QList<Node*>);
-	QList<Node*> getCurrentNodes();
+	void setCurrentNodes(const QList<Node*>&);
+	QList<Node*> getCurrentNodes() const;
 	void addCurrentNode(Node*);
 private:
-	Reporter* reporter;
 	Context* parent;
-	QList<Value*> arguments;
-	QList<Value*> parameters;
+	QList<QPair<QString,Value*>> arguments;
+	QList<QPair<QString,Value*>> parameters;
 	QList<Node*> currentNodes;
 	QList<Node*> inputNodes;
 	Value* currentValue;
 	Value* returnValue;
 	QString currentName;
 	Scope* currentScope;
-	Value* matchArgumentIndex(bool,bool,int,QString);
-	Value* matchArgument(bool,bool,QString);
-	bool match(bool,bool,QString,QString);
+	Value* matchArgumentIndex(bool,bool,int,const QString&) const;
+	Value* matchArgument(bool,bool,const QString&) const;
+	bool match(bool,bool,const QString&,const QString&) const;
 	QHash<QString,Value*> variables;
 };
 

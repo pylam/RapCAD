@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,28 +22,29 @@
 #include "context.h"
 #include "booleanvalue.h"
 
-ProjectionModule::ProjectionModule() : Module("projection")
+ProjectionModule::ProjectionModule(Reporter& r) : Module(r,"projection")
 {
-	addParameter("base");
+	addDescription(tr("Flattens its children onto the xy plane."));
+	addParameter("base",tr("Specifies that only polygons with normals perpendicular to the xy plane be considered."));
 }
 
-Node* ProjectionModule::evaluate(Context* ctx)
+Node* ProjectionModule::evaluate(const Context& ctx) const
 {
-	BooleanValue* cut=dynamic_cast<BooleanValue*>(ctx->getArgumentDeprecatedModule(0,"cut","'slice' module"));
+	BooleanValue* cut=dynamic_cast<BooleanValue*>(ctx.getArgumentDeprecatedModule(0,"cut","'slice' module",reporter));
 	if(cut&&cut->isTrue()) {
-		SliceNode* n=new SliceNode();
-		n->setChildren(ctx->getInputNodes());
+		auto* n=new SliceNode();
+		n->setChildren(ctx.getInputNodes());
 		return n;
 	}
 
 	bool base=false;
-	BooleanValue* baseVal=dynamic_cast<BooleanValue*>(getParameterArgument(ctx,0));
+	auto* baseVal=dynamic_cast<BooleanValue*>(getParameterArgument(ctx,0));
 	if(baseVal)
 		base=baseVal->isTrue();
 
 
-	ProjectionNode* d = new ProjectionNode();
-	d->setChildren(ctx->getInputNodes());
+	auto* d = new ProjectionNode();
+	d->setChildren(ctx.getInputNodes());
 	d->setBase(base);
 	return d;
 }

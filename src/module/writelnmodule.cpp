@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,13 +18,14 @@
 
 #include "writelnmodule.h"
 
-WriteLnModule::WriteLnModule(QTextStream& s) : WriteModule("writeln",s)
+WriteLnModule::WriteLnModule(Reporter& r) : WriteModule(r,"writeln")
 {
+	addDescription(tr("Writes the given text line to the console window."));
 }
 
-Node* WriteLnModule::evaluate(Context* ctx)
+Node* WriteLnModule::evaluate(const Context& ctx) const
 {
 	WriteModule::evaluate(ctx);
 	output << endl;
-	return NULL;
+	return nullptr;
 }

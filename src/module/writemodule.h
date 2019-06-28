@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,10 +24,11 @@
 
 class WriteModule : public Module
 {
+	Q_DECLARE_TR_FUNCTIONS(WriteModule)
 public:
-	WriteModule(QTextStream&);
-	WriteModule(const QString,QTextStream&);
-	Node* evaluate(Context*);
+	explicit WriteModule(Reporter&);
+	WriteModule(Reporter&,const QString&);
+	Node* evaluate(const Context&) const override;
 protected:
 	QTextStream& output;
 };

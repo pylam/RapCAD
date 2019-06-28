@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -37,18 +37,18 @@ public:
 	};
 
 	Instance();
-	~Instance();
-	void setName(QString);
+	~Instance() override;
+	void setName(const QString&);
 	QString getName() const;
-	void setArguments(QList<Argument*>);
+	void setArguments(const QList<Argument*>&);
 	QList<Argument*> getArguments() const;
-	void setChildren(QList <Statement*> childs);
+	void setChildren(const QList <Statement*>&);
 	QList <Statement*> getChildren() const;
 	void setType(Type_e);
 	Type_e getType() const;
-	void setNamespace(QString);
+	void setNamespace(const QString&);
 	QString getNamespace() const;
-	void accept(TreeVisitor&);
+	void accept(TreeVisitor&) override;
 private:
 	QString name;
 	QList<Argument*> arguments;

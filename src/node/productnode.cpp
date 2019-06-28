@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,7 +18,8 @@
 
 #include "productnode.h"
 
-ProductNode::ProductNode()
+ProductNode::ProductNode() :
+	primitive(nullptr)
 {
 }
 
@@ -27,12 +28,12 @@ void ProductNode::setPrimitive(Primitive* value)
 	primitive=value;
 }
 
-Primitive* ProductNode::getPrimitive()
+Primitive* ProductNode::getPrimitive() const
 {
 	return primitive;
 }
 
 void ProductNode::accept(NodeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

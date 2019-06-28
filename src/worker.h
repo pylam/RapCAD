@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -34,18 +34,21 @@ class Worker : public Strategy
 {
 	Q_DECLARE_TR_FUNCTIONS(Worker)
 public:
-	Worker(QTextStream&);
-	void setup(QString,QString,bool,bool);
-	virtual int evaluate();
-	void exportResult(QString);
+	explicit Worker(Reporter&);
+	~Worker() override;
+	void setup(const QString&,const QString&,bool,bool);
+	int evaluate() override;
+	void exportResult(const QString&);
 	bool resultAvailable();
+	void resultAccepted();
 	Renderer* getRenderer();
 protected:
 	void internal();
 	virtual void update() {}
 	virtual void finish() {}
-	Instance* addProductInstance(QString,Script*);
-	QString inputFile;
+	Instance* addProductInstance(const QString&, Script&);
+
+	QFileInfo inputFile;
 	QString outputFile;
 	bool print;
 	bool generate;
@@ -53,9 +56,12 @@ private:
 	QList<Argument*> getArgs(decimal);
 	void primary();
 	void generation();
-	decimal getBoundsHeight();
+	decimal getBoundsHeight() const;
+	void resultFailed(const QString&);
+	void updatePrimitive(Primitive*);
+
 	Primitive* primitive;
-	Renderer* render;
+	Primitive* previous;
 };
 
 #endif // WORKER_H

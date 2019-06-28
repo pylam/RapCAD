@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,12 +33,12 @@ public:
 	};
 
 	Variable();
-	~Variable();
-	void setName(QString);
+	~Variable() override;
+	void setName(const QString&);
 	QString getName() const;
 	void setStorage(Storage_e);
 	Storage_e getStorage() const;
-	void accept(TreeVisitor&);
+	void accept(TreeVisitor&) override;
 private:
 	QString name;
 	Storage_e storage;

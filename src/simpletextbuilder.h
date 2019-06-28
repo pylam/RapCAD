@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,10 +28,10 @@ class SimpleTextBuilder : public TextBuilder
 	typedef QList<Stroke> Letter;
 public:
 	SimpleTextBuilder();
-	void setText(QString);
-	decimal getHeight();
-	void setLocation(Point);
-	Primitive* buildPrimitive() const;
+	void setText(const QString&) override;
+	decimal getHeight() override;
+	void setLocation(const Point&) override;
+	Primitive* buildPrimitive() const override;
 private:
 	QString text;
 	Point location;

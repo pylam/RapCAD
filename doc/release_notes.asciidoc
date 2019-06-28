@@ -1,3 +1,94 @@
+0.9.9
+   * Support compilation with new QT versions
+   * Added documentation generator and updated docs.
+   * Output module description in show builtins.
+   * Embed documentation in all builtin modules that have parameters.
+   * Remove center parameter from sphere.
+   * Added is_mat4x4 function.
+   * Added indexes to children module.
+   * Save line some numbers into syntax tree, which will be used in future.
+   * Allow iteration over text values with for.
+   * Implemented chr function.
+   * Implemented type test functions.
+   * Restore logical and/or operations.
+   * Improve tests for Logical operators.
+   * Added tests for chain_hull() module.
+   * Better memory handling and exception handling.
+   * Add some additional memory cleanup.
+   * Implemented chain_hull() module.
+   * Fix to offset module and added two simple tests.
+   * Fix to tests for range length.
+   * Fix to len() function for range.
+
+0.9.8
+   * Support for 3mf file format in export.
+   * Choose a sensible location when exporting files.
+   * Fix zero-length edges and zero-area triangles in input STL or polyhedron.
+   * Added $fe variable which calculates fragments based on tolerance.
+   * Correct parameter name for polyhedron "surfaces" -> "faces".
+   * Basic implementation of mesh simplification.
+   * Added more tests for polygon and fix for empty polygon.
+   * Implemented normal$() module to show orthogonals to facets.
+   * Better detection of binary STL.
+   * Basic implementation of children() module.
+   * Let the align function can take a vector.
+   * Allow norm function to be applied to numbers and complex values.
+   * Fix inverse trig functions.
+   * Ang function can now return the axis and angle between two vectors.
+   * Implemented cross function and operator.
+   * Result of undefined binary operation should be undef.
+   * Allow relative positioning by letting primitives have children.
+   * Fix GL viewer, calculate normals with double.
+   * Allow concatentation with undef to yield a result.
+     e.g. a=[]; no longer needed before to make a~=[1,2,3]; work.
+   * Implemented export to nef.
+   * Basic caching of primitives.
+   * Hook the view menu actions up to appropriate views.
+   * Fix weird crash on shutdown.
+
+0.9.7
+   * Use arbitary precision arithmetic for all calculations.
+   * Prevent toolbar being hidden show actions menu on right click.
+   * Greyscale the rendering window while compilation is taking place.
+   * Use new QOpenGLWidget when Qt5.4 or above is available.
+   * Added discrete module for quantising vertices to the nearest n decimal places.
+   * Added a simple renderer, to render wireframes without cgal.
+   * Experimental multi material support.
+   * Provide backwards compatibility in rotate extrude.
+   * Rotate module now accepts unit quaternion (versor).
+   * Implemented quaternions, multiplication, and ang() function.
+   * Allow nesting of auxilirary modules, and display nested to be displayed.
+   * Implemented exponent operator for vectors.
+   * Implemented length (magnitude) operator.
+   * Implemented vector multiplication and norm() function.
+   * Ranges now support basic interval arithmetic.
+   * Update to Qt5.5.1 on windows build.
+   * Allow diameter parameter on circle.
+   * Removed extraneous new lines in console output.
+   * Added places parameter to round function.
+   * Added a triangulate module.
+   * Fixed a crash in linear_extrude when there are no perimeters.
+   * Preferences default to "Safety orange" theme.
+   * Ensure only modified files are saved and allow do not save for new tabs when closed.
+   * Updated windows build environment.
+
+0.9.6
+   * All trig functions now take value in degrees.
+   * Ensure cone, prism, cylinder etc use exact centering along vertical axis.
+   * Add option to use rounding within trig, and other functions.
+   * Make output precision configurable in preferences.
+   * Higher output precision in AMF format.
+   * Fix to rotate_extrude bug where r=0.
+   * Added test for bezier surface, solid linear extrude, and slice.
+   * All primitives are now constructed as a list of points and indices to those points.
+   * Corrections to docs where bounds() should be bound$().
+   * Use exact centering for sphere and default to point when no radius given.
+   * Improve compilation time output in gui.
+   * Fix crash when version() is called more than once.
+   * Added feature matrix to docs.
+   * Functions min() and max() now work for any number of arguments.
+   * Added some i18n support code.
+
 0.9.5
    * Implemented importing scripts with the 'use' directive.
    * Fix some hard crashes in Polygon, Polyhedron and Polyline modules.

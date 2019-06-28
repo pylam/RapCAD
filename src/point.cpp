@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,58 +18,47 @@
 
 #include "point.h"
 
-bool Point::operator ==(const Point that) const
+#ifndef USE_CGAL
+bool Point::operator ==(const Point& that) const
 {
-	return this->x==that.x&&this->y==that.y&&this->z==that.z;
+	return _x==that._x&&_y==that._y&&_z==that._z;
 }
 
-decimal Point::getX() const
+decimal Point::x() const
 {
-	return x;
+	return _x;
 }
 
-decimal Point::getY() const
+decimal Point::y() const
 {
-	return y;
+	return _y;
 }
 
-decimal Point::getZ() const
+decimal Point::z() const
 {
-	return z;
+	return _z;
 }
 
-void Point::getXYZ(decimal& x, decimal& y, decimal& z) const
+Point Point::transform(TransformMatrix* matrix) const
 {
-	x=this->x;
-	y=this->y;
-	z=this->z;
+	const decimal* m=matrix->getValues();
+	decimal nx,ny,nz;
+	nx=(m[ 0]*_x+m[ 1]*_y+m[ 2]*_z+m[ 3]);
+	ny=(m[ 4]*_x+m[ 5]*_y+m[ 6]*_z+m[ 7]);
+	nz=(m[ 8]*_x+m[ 9]*_y+m[10]*_z+m[11]);
+	return Point(nx,ny,nz);
 }
+#endif
 
-void Point::getXY(decimal& x, decimal& y) const
-{
-	x=this->x;
-	y=this->y;
-}
-
-QString Point::toString() const
-{
-	return toString(16,true);
-}
-
-QString Point::toString(int precision) const
-{
-	return toString(precision,false);
-}
-
-QString Point::toString(int precision,bool trim) const
+QString to_string(const Point& p)
 {
 	QString res;
 	res.append("[");
-	res.append(to_string(x,precision,trim));
+	res.append(to_string(p.x()));
 	res.append(",");
-	res.append(to_string(y,precision,trim));
+	res.append(to_string(p.y()));
 	res.append(",");
-	res.append(to_string(z,precision,trim));
+	res.append(to_string(p.z()));
 	res.append("]");
 
 	return res;

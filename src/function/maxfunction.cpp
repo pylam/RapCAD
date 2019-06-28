@@ -1,54 +1,33 @@
+/*
+ *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
+ *   Copyright (C) 2010-2019 Giles Bathgate
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "maxfunction.h"
-#include "numbervalue.h"
-#include "vectorvalue.h"
-#include "rangevalue.h"
-#include "onceonly.h"
-#include "math.h"
+#include "context.h"
 
 MaxFunction::MaxFunction() : Function("max")
 {
+	addDescription(tr("Returns the largest of the given values."));
 	addParameter("values");
 }
 
-static decimal maximum(QList<Value*> values,bool& ok)
+Value* MaxFunction::evaluate(const Context& ctx) const
 {
-	decimal v=0.0;
-	OnceOnly first;
-	foreach(Value* a,values) {
-		NumberValue* nextVal=dynamic_cast<NumberValue*>(a);
-		if(nextVal) {
-			if(first())
-				v=nextVal->getNumber();
-			else
-				v=fmax(v,nextVal->getNumber());
+	QList<Value*> values=ctx.getArgumentValues();
 
-			ok=true;
-			continue;
-		}
-		VectorValue* vecVal=dynamic_cast<VectorValue*>(a);
-		if(vecVal) {
-			v=fmax(v,maximum(vecVal->getChildren(),ok));
-			continue;
-		}
-		RangeValue* rngVal=dynamic_cast<RangeValue*>(a);
-		if(rngVal) {
-			QList<Value*> rng;
-			rng.append(rngVal->getStart());
-			rng.append(rngVal->getFinish());
-			v=fmax(v,maximum(rng,ok));
-		}
-	}
-	return v;
-}
-
-Value* MaxFunction::evaluate(Context* ctx)
-{
-	QList<Value*> values=ctx->getArguments();
-
-	bool ok=false;
-	decimal v=maximum(values,ok);
-	if(!ok)
-		return new Value();
-
-	return new NumberValue(v);
+	return Value::compareAll(values,Expression::GreaterThan);
 }

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,16 +19,16 @@
 #include "textvalue.h"
 #include "numbervalue.h"
 #include "booleanvalue.h"
+#include "textiterator.h"
 
-TextValue::TextValue(QString value)
+TextValue::TextValue(const QString& value) :
+	text(value)
 {
-	this->text=value;
-	this->defined=true;
 }
 
 QString TextValue::getValueString() const
 {
-	return this->text;
+	return text;
 }
 
 TextValue* TextValue::toText()
@@ -43,17 +43,30 @@ Value* TextValue::toNumber()
 	if(ok)
 		return new NumberValue(n);
 	else
-		return new Value();
+		return Value::undefined();
+}
+
+ValueIterator* TextValue::createIterator()
+{
+	return new TextIterator(text);
 }
 
 bool TextValue::isTrue() const
 {
-	return !this->text.isEmpty();
+	return !text.isEmpty();
+}
+
+Value* TextValue::operation(Expression::Operator_e op)
+{
+	if(op==Expression::Length) {
+		return new NumberValue(text.length());
+	}
+	return this;
 }
 
 Value* TextValue::operation(Value& v,Expression::Operator_e e)
 {
-	TextValue* that=dynamic_cast<TextValue*>(&v);
+	auto* that=dynamic_cast<TextValue*>(&v);
 	if(that) {
 		if(isComparison(e)) {
 			return new BooleanValue(operation(this,e,that));
@@ -62,10 +75,10 @@ Value* TextValue::operation(Value& v,Expression::Operator_e e)
 		}
 	}
 
-	NumberValue* num=dynamic_cast<NumberValue*>(&v);
+	auto* num=dynamic_cast<NumberValue*>(&v);
 	if(num)
 		if(e==Expression::Index)
-			return new TextValue(this->text.at(num->getNumber()));
+			return new TextValue(text.at(num->toInteger()));
 
 	return Value::operation(v,e);
 }
@@ -73,21 +86,21 @@ Value* TextValue::operation(Value& v,Expression::Operator_e e)
 QString TextValue::operation(QString left, Expression::Operator_e e, QString right)
 {
 	switch(e) {
-	case Expression::Concatenate:
-		return left.append(right);
-	default:
-		return this->text;
+		case Expression::Concatenate:
+			return left.append(right);
+		default:
+			return text;
 	}
 }
 
 bool TextValue::operation(TextValue* left, Expression::Operator_e e, TextValue* right)
 {
 	switch(e) {
-	case Expression::Equal:
-		return left->text==right->text;
-	case Expression::NotEqual:
-		return left->text!=right->text;
-	default:
-		return basicOperation<bool,bool>(left->isTrue(),e,right->isTrue());
+		case Expression::Equal:
+			return left->text==right->text;
+		case Expression::NotEqual:
+			return left->text!=right->text;
+		default:
+			return basicOperation(left->isTrue(),e,right->isTrue());
 	}
 }

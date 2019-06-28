@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,10 @@ class TextBuilder
 {
 public:
 	TextBuilder() {}
-	virtual void setText(QString)=0;
+	virtual ~TextBuilder() {}
+	virtual void setText(const QString&)=0;
 	virtual decimal getHeight()=0;
-	virtual void setLocation(Point)=0;
+	virtual void setLocation(const Point&)=0;
 	virtual Primitive* buildPrimitive() const=0;
 };
 

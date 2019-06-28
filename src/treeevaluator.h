@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -49,51 +49,54 @@
 #include "layout.h"
 #include "value.h"
 #include "product.h"
+#include "complexexpression.h"
 
 class TreeEvaluator : public TreeVisitor
 {
 	Q_DECLARE_TR_FUNCTIONS(TreeEvaluator)
 public:
-	TreeEvaluator(Reporter*);
-	~TreeEvaluator();
-	void visit(Module*);
-	void visit(ModuleScope*);
-	void visit(Instance*);
-	void visit(Function*);
-	void visit(FunctionScope*);
-	void visit(CompoundStatement*);
-	void visit(IfElseStatement*);
-	void visit(ForStatement*);
-	void visit(Parameter*);
-	void visit(BinaryExpression*);
-	void visit(Argument*);
-	void visit(AssignStatement*);
-	void visit(VectorExpression*);
-	void visit(RangeExpression*);
-	void visit(UnaryExpression*);
-	void visit(ReturnStatement*);
-	void visit(TernaryExpression*);
-	void visit(Invocation*);
-	void visit(Callback*);
-	void visit(ModuleImport*);
-	void visit(ScriptImport*);
-	void visit(Literal*);
-	void visit(Variable*);
-	void visit(CodeDoc*);
-	void visit(Script*);
-	void visit(Product*);
+	explicit TreeEvaluator(Reporter&);
+	~TreeEvaluator() override;
+	void visit(const Module&) override;
+	void visit(const ModuleScope&) override;
+	void visit(const Instance&) override;
+	void visit(const Function&) override;
+	void visit(const FunctionScope&) override;
+	void visit(const CompoundStatement&) override;
+	void visit(const IfElseStatement&) override;
+	void visit(const ForStatement&) override;
+	void visit(const Parameter&) override;
+	void visit(const BinaryExpression&) override;
+	void visit(const Argument&) override;
+	void visit(const AssignStatement&) override;
+	void visit(const VectorExpression&) override;
+	void visit(const RangeExpression&) override;
+	void visit(const UnaryExpression&) override;
+	void visit(const ReturnStatement&) override;
+	void visit(const TernaryExpression&) override;
+	void visit(const Invocation&) override;
+	void visit(const ModuleImport&) override;
+	void visit(const ScriptImport&) override;
+	void visit(const Literal&) override;
+	void visit(const Variable&) override;
+	void visit(const CodeDoc&) override;
+	void visit(const ComplexExpression&) override;
+
+	void visit(Script&) override;
+	void visit(Product&) override;
+	void visit(Callback&) override;
 
 	Node* getRootNode() const;
 
 private:
 	void startContext(Scope*);
 	void finishContext();
-	Node* createUnion(QList<Node*>);
 	void descend(Scope*);
 	void startLayout(Scope*);
 	void finishLayout();
+	QFileInfo getFullPath(const QString&);
 
-	Reporter* reporter;
+	Reporter& reporter;
 	Context* context;
 	Layout* layout;
 	QStack<Context*> contextStack;
@@ -102,7 +105,7 @@ private:
 	bool descendDone;
 	Node* rootNode;
 	QList<Script*> imports;
-	QStack<QFileInfo*> importLocations;
+	QStack<QDir> importLocations;
 };
 
 #endif // TREEEVALUATOR_H

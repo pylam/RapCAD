@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,11 +22,11 @@
 #include "node/importnode.h"
 #include "nodeevaluator.h"
 
-Comparer::Comparer(QTextStream& s) : Strategy(s)
+Comparer::Comparer(Reporter& r) : Strategy(r)
 {
 }
 
-void Comparer::setup(QString a, QString b)
+void Comparer::setup(const QString& a, const QString& b)
 {
 	aFile=a;
 	bFile=b;
@@ -34,7 +34,7 @@ void Comparer::setup(QString a, QString b)
 
 int Comparer::evaluate()
 {
-	reporter->startTiming();
+	reporter.startTiming();
 
 	ImportNode* a=new ImportNode(aFile);
 	ImportNode* b=new ImportNode(bFile);
@@ -43,7 +43,7 @@ int Comparer::evaluate()
 	children.append(a);
 	children.append(b);
 
-	SymmetricDifferenceNode* d=new SymmetricDifferenceNode();
+	auto* d=new SymmetricDifferenceNode();
 	d->setChildren(children);
 
 	NodeEvaluator ne(reporter);
@@ -51,16 +51,21 @@ int Comparer::evaluate()
 	delete d;
 
 	Primitive* p=ne.getResult();
-	if(p&&p->isEmpty()) {
-		reporter->reportMessage(tr("The objects are identical."));
-		reporter->setReturnCode(EXIT_SUCCESS);
+	if(p) {
+		if(p->isEmpty()) {
+			reporter.reportMessage(tr("The objects are identical."));
+			reporter.setReturnCode(EXIT_SUCCESS);
+		} else {
+			reporter.reportMessage(tr("The objects are different."));
+			reporter.setReturnCode(EXIT_FAILURE);
+		}
 	} else {
-		reporter->reportMessage(tr("The objects are different"));
-		reporter->setReturnCode(EXIT_FAILURE);
+		reporter.reportMessage(tr("The objects are both empty."));
+		reporter.setReturnCode(EXIT_SUCCESS);
 	}
 
 	delete p;
-	reporter->reportTiming(tr("comparison"));
+	reporter.reportTiming(tr("comparison"));
 
-	return reporter->getReturnCode();
+	return reporter.getReturnCode();
 }

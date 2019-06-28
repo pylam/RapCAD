@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,23 +17,19 @@
  */
 
 #include "boundsmodule.h"
+#include "context.h"
 #include "numbervalue.h"
 #include "node/boundsnode.h"
 
-BoundsModule::BoundsModule() : Module("bound")
+BoundsModule::BoundsModule(Reporter& r) : Module(r,"bound")
 {
+	addDescription(tr("Shows the bounding box of its children."));
 	auxilary=true;
-	addParameter("precision");
 }
 
-Node* BoundsModule::evaluate(Context* ctx)
+Node* BoundsModule::evaluate(const Context& ctx) const
 {
-	NumberValue* precVal=dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
-
-	BoundsNode* n=new BoundsNode();
-	if(precVal)
-		n->setPrecision(precVal->getNumber());
-
-	n->setChildren(ctx->getInputNodes());
+	auto* n=new BoundsNode();
+	n->setChildren(ctx.getInputNodes());
 	return n;
 }

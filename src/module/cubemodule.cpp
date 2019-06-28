@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,128 +19,43 @@
 #include "cubemodule.h"
 #include "context.h"
 #include "vectorvalue.h"
+#include "node/primitivenode.h"
 
-CubeModule::CubeModule() : PrimitiveModule("cube")
+CubeModule::CubeModule(Reporter& r) : PrimitiveModule(r,"cube")
 {
-	addParameter("size");
-	addParameter("center");
+	addDescription(tr("Constructs a cube or cuboid. It will be placed in the first octant unless the center parameter is true."));
+	addParameter("size",tr("The size of the cube. A single value or x,y,z"));
+	addParameter("center",tr("Specifies whether to center the cube at the origin"));
 }
 
-Node* CubeModule::evaluate(Context* ctx)
+Node* CubeModule::evaluate(const Context& ctx) const
 {
 	Value* sizeVal=getParameterArgument(ctx,0);
 	Value* centerVal=getParameterArgument(ctx,1);
-	decimal center=false;
+	bool center=false;
 	if(centerVal)
 		center = centerVal->isTrue();
 
-	decimal x=1.0,y=1.0,z=1.0;
+	Point pt(1.0,1.0,1.0);
 	if(sizeVal) {
 		VectorValue* size=sizeVal->toVector(3);
-		Point p = size->getPoint();
-		p.getXYZ(x,y,z);
+		pt = size->getPoint();
 	}
 
-	PrimitiveNode* p=new PrimitiveNode();
-	decimal x1, x2, y1, y2, z1, z2;
-	x1 = y1 = z1 = 0;
-	x2 = x;
-	y2 = y;
-	z2 = z;
+	auto* pn=new PrimitiveNode(reporter);
+	Primitive* p=pn->createPrimitive();
+	pn->setChildren(ctx.getInputNodes());
 
-	if(x==0.0) {
-		p->createVertex(x1,y2,z1); //0
-		p->createVertex(x1,y1,z1); //1
-		p->createVertex(x1,y1,z2); //2
-		p->createVertex(x1,y2,z2); //3
-		Polygon* pg=p->createPolygon();
-		pg->append(0);
-		pg->append(1);
-		pg->append(2);
-		pg->append(3);
-		return p;
-	}
-
-	if(y==0.0) {
-		p->createVertex(x1,y1,z1); //0
-		p->createVertex(x2,y1,z1); //1
-		p->createVertex(x2,y1,z2); //2
-		p->createVertex(x1,y1,z2); //3
-		Polygon* pg=p->createPolygon();
-		pg->append(0);
-		pg->append(1);
-		pg->append(2);
-		pg->append(3);
-		return p;
-	}
-
-	if(z==0.0) {
-		p->createVertex(x1,y2,z1); //0
-		p->createVertex(x2,y2,z1); //1
-		p->createVertex(x2,y1,z1); //2
-		p->createVertex(x1,y1,z1); //3
-		Polygon* pg=p->createPolygon();
-		pg->append(0);
-		pg->append(1);
-		pg->append(2);
-		pg->append(3);
-		return p;
-	}
-
-	p->createVertex(x1,y1,z2); //0
-	p->createVertex(x2,y1,z2); //1
-	p->createVertex(x2,y2,z2); //2
-	p->createVertex(x1,y2,z2); //3
-	p->createVertex(x1,y1,z1); //4
-	p->createVertex(x2,y1,z1); //5
-	p->createVertex(x2,y2,z1); //6
-	p->createVertex(x1,y2,z1); //7
-
-	//Top
-	Polygon* pg=p->createPolygon();
-	pg->append(0);
-	pg->append(1);
-	pg->append(2);
-	pg->append(3);
-
-	pg=p->createPolygon();
-	pg->append(4);
-	pg->append(5);
-	pg->append(1);
-	pg->append(0);
-
-	pg=p->createPolygon();
-	pg->append(5);
-	pg->append(6);
-	pg->append(2);
-	pg->append(1);
-
-	pg=p->createPolygon();
-	pg->append(6);
-	pg->append(7);
-	pg->append(3);
-	pg->append(2);
-
-	pg=p->createPolygon();
-	pg->append(7);
-	pg->append(4);
-	pg->append(0);
-	pg->append(3);
-
-	//Bottom
-	pg=p->createPolygon();
-	pg->append(7);
-	pg->append(6);
-	pg->append(5);
-	pg->append(4);
+	decimal x1=0,y1=0,z1=0;
+	createCuboid<Point>(p,x1,pt.x(),y1,pt.y(),z1,pt.z());
 
 	if(center) {
-		AlignNode* n=new AlignNode();
-		n->setCenter(true);
-		n->addChild(p);
-		return n;
+		auto* an=new AlignNode();
+		an->setCenter(true);
+		an->addChild(pn);
+		return an;
 	}
 
-	return p;
+	return pn;
 
 }

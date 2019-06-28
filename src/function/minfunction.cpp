@@ -1,53 +1,33 @@
+/*
+ *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
+ *   Copyright (C) 2010-2019 Giles Bathgate
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "minfunction.h"
-#include "numbervalue.h"
-#include "vectorvalue.h"
-#include "rangevalue.h"
-#include "onceonly.h"
-#include "math.h"
+#include "context.h"
 
 MinFunction::MinFunction() : Function("min")
 {
+	addDescription(tr("Returns the smallest of the given values."));
 	addParameter("values");
 }
 
-static decimal minimum(QList<Value*> values,bool& ok)
+Value* MinFunction::evaluate(const Context& ctx) const
 {
-	decimal v=0.0;
-	OnceOnly first;
-	foreach(Value* a,values) {
-		NumberValue* nextVal=dynamic_cast<NumberValue*>(a);
-		if(nextVal) {
-			if(first())
-				v=nextVal->getNumber();
-			else
-				v=fmin(v,nextVal->getNumber());
-			ok=true;
-			continue;
-		}
-		VectorValue* vecVal=dynamic_cast<VectorValue*>(a);
-		if(vecVal) {
-			v=fmin(v,minimum(vecVal->getChildren(),ok));
-			continue;
-		}
-		RangeValue* rngVal=dynamic_cast<RangeValue*>(a);
-		if(rngVal) {
-			QList<Value*> rng;
-			rng.append(rngVal->getStart());
-			rng.append(rngVal->getFinish());
-			v=fmin(v,minimum(rng,ok));
-		}
-	}
-	return v;
-}
+	QList<Value*> values=ctx.getArgumentValues();
 
-Value* MinFunction::evaluate(Context* ctx)
-{
-	QList<Value*> values=ctx->getArguments();
-
-	bool ok=false;
-	decimal v=minimum(values,ok);
-	if(!ok)
-		return new Value();
-
-	return new NumberValue(v);
+	return Value::compareAll(values,Expression::LessThan);
 }

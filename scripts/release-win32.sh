@@ -5,63 +5,76 @@ function die {
   exit
 }
 
-hostdir=/h/rapcad
-build=$hostdir/build.log
-error=$hostdir/error.log
+SHARED=/c/shared/
 
 pushd /c/rapcad
 
 git reset --hard master \
-  > $build 2> $error || die "failed on git reset"
+  || die "failed on git reset"
 
 git pull \
-  >> $build 2>> $error || die "failed on git pull"
+  || die "failed on git pull"
 
-version=$(cat VERSION) || exit
-
-echo Building RapCAD v$version \
-  >> $build || exit
+version=$(cat VERSION)
+echo Building RapCAD v$version
 
 git reset --hard master \
-  >> $build 2>> $error || die "failed on git reset"
+  || die "failed on git reset"
 
 git clean -df \
-  >> $build 2>> $error || die "failed on git clean"
+  || die "failed on git clean"
 
 qmake CONFIG+=official \
-  >> $build 2>> $error || die "qmake failed."
+  || die "qmake failed."
 
 mingw32-make -f Makefile.Release \
-  >> $build 2>> $error || die "make failed."
+  || die "make failed."
 
 mingw32-make clean \
-  >> $build 2>> $error || die "make clean failed."
+  || die "make clean failed."
 
 mingw32-make user_guide.html \
-  >> $build 2>> $error || die "make userguide failed."
+  || die "make userguide failed."
 
 cp user_guide.html release \
-  >> $build 2>> $error || die "failed copying userguide."
+  || die "failed copying userguide."
 
-cp -r ../rapcad-dlls/* release \
-  >> $build 2>> $error || die "failed copying dlls."
+CGAL="../CGAL-4.7"
+GMP="$CGAL/auxiliary/gmp/lib"
+cp \
+  $CGAL/bin/libCGAL.dll \
+  $CGAL/bin/libCGAL_Core.dll \
+  $GMP/libgmp-10.dll \
+  $GMP/libmpfr-4.dll \
+  release \
+  || die "failed copying dlls."
+
+windeployqt \
+  --no-svg \
+  --no-translations \
+  --no-angle \
+  release/rapcad.exe \
+  || die "failed running windeployqt."
+
+rm -r release/imageformats \
+  || die "failed removing imageformat plugins"
 
 makensis installer.nsi \
-  >> $build 2>> $error || die "failed building nsis installer."
+  || die "failed building nsis installer."
 
 mv rapcad_setup.exe rapcad_$version\_setup.exe \
-  >> $build 2>> $error || die "failed renaming setup exe"
+  || die "failed renaming setup exe"
 
 mv release rapcad-$version  \
-  >> $build 2>> $error || die "failed making release dir"
+  || die "failed making release dir"
 
 7z a -tzip rapcad_$version.zip rapcad-$version \
-  >> $build 2>> $error || die "failed building zip"
+  || die "failed building zip"
 
-mv rapcad_$version\_setup.exe $hostdir \
-  >> $build 2>> $error || die "failed moving zip"
+mv rapcad_$version\_setup.exe $SHARED \
+  || die "failed moving zip"
 
-mv rapcad_$version.zip $hostdir \
-  >> $build 2>> $error || die "failed moving setup exe"
+mv rapcad_$version.zip $SHARED \
+  || die "failed moving setup exe"
 
 popd

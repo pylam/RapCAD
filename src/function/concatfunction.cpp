@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,24 +17,27 @@
  */
 
 #include "concatfunction.h"
+#include "context.h"
 #include "vectorvalue.h"
 
 ConcatFunction::ConcatFunction() : Function("concat")
 {
+	addDescription(tr("Returns a vector with the passed in vector appended."));
 }
 
-Value* ConcatFunction::evaluate(Context* ctx)
+Value* ConcatFunction::evaluate(const Context& ctx) const
 {
-	VectorValue* val=NULL;
-	foreach(Value* argVal, ctx->getArguments()) {
-		VectorValue* arg = dynamic_cast<VectorValue*>(argVal);
-		if(!arg)
-			arg= argVal->toVector(1);
+	VectorValue* val=nullptr;
+	for(auto arg: ctx.getArguments()) {
+		Value* argVal = arg.second;
+		auto* vecVal = dynamic_cast<VectorValue*>(argVal);
+		if(!vecVal)
+			vecVal=argVal->toVector(1);
 
 		if(!val) {
-			val=arg;
+			val=vecVal;
 		} else {
-			Value* res=Value::operation(val,Expression::Concatenate,arg);
+			Value* res=Value::operation(val,Expression::Concatenate,vecVal);
 			val=res->toVector(1);
 		}
 	}

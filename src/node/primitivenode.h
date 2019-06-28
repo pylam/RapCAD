@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,17 +23,17 @@
 #include <QString>
 #include "node.h"
 #include "primitive.h"
+#include "reporter.h"
 
 class PrimitiveNode : public Node
 {
 public:
-	PrimitiveNode();
+	explicit PrimitiveNode(Reporter&);
 	~PrimitiveNode();
-	Polygon* createPolygon();
-	void createVertex(decimal x, decimal y, decimal z);
-	void createVertex(Point p);
-	void accept(NodeVisitor&);
-	Primitive* getPrimitive();
+	void accept(NodeVisitor&) override;
+	Primitive* createPrimitive();
+	Primitive* getPrimitive() const;
+	void setPrimitive(Primitive* value);
 private:
 	Primitive* primitive;
 };

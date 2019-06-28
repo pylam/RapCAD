@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 #include "treeprinter.h"
 #include "onceonly.h"
 
-TreePrinter::TreePrinter(QTextStream& s) : result(s)
+TreePrinter::TreePrinter(QTextStream& s) :
+	result(s),
+	indent(0)
 {
-	this->indent=0;
 }
 
 TreePrinter::~TreePrinter()
@@ -30,64 +31,64 @@ TreePrinter::~TreePrinter()
 
 void TreePrinter::createIndent()
 {
-	for(unsigned int i=0; i<indent; i++)
+	for(unsigned int i=0; i<indent; ++i)
 		result << "  ";
 }
 
-void TreePrinter::visit(ModuleScope* scp)
+void TreePrinter::visit(const ModuleScope& scp)
 {
 	++indent;
-	foreach(Declaration* d, scp->getDeclarations()) {
+	for(Declaration* d: scp.getDeclarations()) {
 		createIndent();
 		d->accept(*this);
 	}
 	--indent;
 }
 
-void TreePrinter::visit(Instance* inst)
+void TreePrinter::visit(const Instance& inst)
 {
 
-	switch(inst->getType()) {
-	case Instance::Root:
-		result << "!";
-		break;
-	case Instance::Debug:
-		result << "#";
-		break;
-	case Instance::Background:
-		result << "%";
-		break;
-	case Instance::Disable:
-		result << "*";
-		break;
-	default:
-		break;
+	switch(inst.getType()) {
+		case Instance::Root:
+			result << "!";
+			break;
+		case Instance::Debug:
+			result << "#";
+			break;
+		case Instance::Background:
+			result << "%";
+			break;
+		case Instance::Disable:
+			result << "*";
+			break;
+		default:
+			break;
 	}
 
-	QString name = inst->getNamespace();
+	QString name = inst.getNamespace();
 	if(!name.isEmpty()) {
 		result << name;
 		result << "::";
 	}
-	result << inst->getName();
+	result << inst.getName();
 	result << "(";
-	QList<Argument*> arguments = inst->getArguments();
+	QList<Argument*> arguments = inst.getArguments();
 	OnceOnly first;
-	foreach(Argument* a, arguments) {
+	for(Argument* a: arguments) {
 		if(!first())
 			result << ",";
 		a->accept(*this);
 	}
 	result << ")";
 
-	QList<Statement*> children = inst->getChildren();
+	QList<Statement*> children = inst.getChildren();
 	int c = children.size();
 	if(c>0) {
 		if(c>1) {
 			result << "{\n";
 			++indent;
 		}
-		for(int i=0; i<c; i++) {
+		for(auto i=0; i<c; ++i) {
 			if(c>1)
 				createIndent();
 			children.at(i)->accept(*this);
@@ -104,51 +105,61 @@ void TreePrinter::visit(Instance* inst)
 	result << "\n";
 }
 
-void TreePrinter::visit(Module* mod)
+void TreePrinter::visit(const Module& mod)
 {
+	if(mod.isDeprecated()) return;
+
+	QList<Parameter*> parameters = mod.getParameters();
+	QString desc=mod.getDescription();
+	printCodeDoc(desc,parameters);
 	result << "module ";
-	result << mod->getName();
+	result << mod.getName();
+	if(mod.getAuxilary())
+		result << "$";
 	result << "(";
-	QList<Parameter*> parameters = mod->getParameters();
 	OnceOnly first;
-	foreach(Parameter* p,parameters) {
+	for(Parameter* p: parameters) {
 		if(!first())
 			result << ",";
 		p->accept(*this);
 	}
 	result << "){";
-	Scope* scp=mod->getScope();
+	Scope* scp=mod.getScope();
 	if(scp) {
 		result << "\n";
 		scp->accept(*this);
 		createIndent();
 	}
-	result << "}\n";
+	result << "}\n\n";
 }
 
-void TreePrinter::visit(Function* func)
+void TreePrinter::visit(const Function& func)
 {
+	QList<Parameter*> parameters = func.getParameters();
+	QString desc=func.getDescription();
+	printCodeDoc(desc,parameters);
 	result << "function ";
-	result << func->getName();
+	result << func.getName();
 	result << "(";
-	QList<Parameter*> parameters = func->getParameters();
 	OnceOnly first;
-	foreach(Parameter* p,parameters) {
+	for(Parameter* p: parameters) {
 		if(!first())
 			result << ",";
 		p->accept(*this);
 	}
 
 	result << ")";
-	Scope* scp=func->getScope();
+	Scope* scp=func.getScope();
 	if(scp)
 		scp->accept(*this);
-	result << "\n";
+	else
+		result << "{}";
+	result << "\n\n";
 }
 
-void TreePrinter::visit(FunctionScope* scp)
+void TreePrinter::visit(const FunctionScope& scp)
 {
-	Expression* expression = scp->getExpression();
+	Expression* expression = scp.getExpression();
 	if(expression) {
 		result << "=";
 		expression->accept(*this);
@@ -156,12 +167,12 @@ void TreePrinter::visit(FunctionScope* scp)
 		return;
 	}
 
-	QList<Statement*> statements = scp->getStatements();
+	QList<Statement*> statements = scp.getStatements();
 	int s = statements.size();
 	if(s>0) {
 		result << "{\n";
 		++indent;
-		foreach(Statement* s, statements) {
+		for(Statement* s: statements) {
 			createIndent();
 			s->accept(*this);
 		}
@@ -174,16 +185,16 @@ void TreePrinter::visit(FunctionScope* scp)
 	result << "\n";
 }
 
-void TreePrinter::visit(CompoundStatement* stmt)
+void TreePrinter::visit(const CompoundStatement& stmt)
 {
-	QList<Statement*> children = stmt->getChildren();
+	QList<Statement*> children = stmt.getChildren();
 	int c = children.size();
 	if(c>0) {
 		if(c>1) {
 			result << "{\n";
 			++indent;
 		}
-		for(int i=0; i<c; i++) {
+		for(auto i=0; i<c; ++i) {
 			if(c>1)
 				createIndent();
 			children.at(i)->accept(*this);
@@ -198,16 +209,16 @@ void TreePrinter::visit(CompoundStatement* stmt)
 
 }
 
-void TreePrinter::visit(IfElseStatement* ifelse)
+void TreePrinter::visit(const IfElseStatement& ifelse)
 {
 	result << "if(";
-	ifelse->getExpression()->accept(*this);
+	ifelse.getExpression()->accept(*this);
 	result << ")";
-	Statement* trueStatement = ifelse->getTrueStatement();
+	Statement* trueStatement = ifelse.getTrueStatement();
 	if(trueStatement)
 		trueStatement->accept(*this);
 
-	Statement* falseStatement = ifelse->getFalseStatement();
+	Statement* falseStatement = ifelse.getFalseStatement();
 	if(falseStatement) {
 		result << "\n";
 		createIndent();
@@ -218,79 +229,79 @@ void TreePrinter::visit(IfElseStatement* ifelse)
 	result << "\n";
 }
 
-void TreePrinter::visit(ForStatement* forstmt)
+void TreePrinter::visit(const ForStatement& forstmt)
 {
 	result << "for(";
-	foreach(Argument* a, forstmt->getArguments())
+	for(Argument* a: forstmt.getArguments())
 		a->accept(*this);
 	result << ")";
-	Statement* statement = forstmt->getStatement();
+	Statement* statement = forstmt.getStatement();
 	statement->accept(*this);
 
 	result << "\n";
 }
 
-void TreePrinter::visit(Parameter* param)
+void TreePrinter::visit(const Parameter& param)
 {
-	result << param->getName();
+	result << param.getName();
 
-	Expression* expression = param->getExpression();
+	Expression* expression = param.getExpression();
 	if(expression) {
 		result << "=";
 		expression->accept(*this);
 	}
 }
 
-void TreePrinter::visit(BinaryExpression* exp)
+void TreePrinter::visit(const BinaryExpression& exp)
 {
 	result << "(";
-	exp->getLeft()->accept(*this);
-	result << exp->getOpString();
-	exp->getRight()->accept(*this);
+	exp.getLeft()->accept(*this);
+	result << exp.getOpString();
+	exp.getRight()->accept(*this);
 	result << ")";
 }
 
-void TreePrinter::visit(Argument* arg)
+void TreePrinter::visit(const Argument& arg)
 {
-	Variable* variable = arg->getVariable();
+	Variable* variable = arg.getVariable();
 	if(variable) {
 		variable->accept(*this);
 		result << "=";
 	}
 
-	arg->getExpression()->accept(*this);
+	arg.getExpression()->accept(*this);
 }
 
-void TreePrinter::visit(AssignStatement* stmt)
+void TreePrinter::visit(const AssignStatement& stmt)
 {
-	Variable* var = stmt->getVariable();
+	Variable* var = stmt.getVariable();
 	if(var)
 		var->accept(*this);
 
-	switch(stmt->getOperation()) {
-	case Expression::Increment:
-		result << "++";
-		break;
-	case Expression::Decrement:
-		result << "--";
-		break;
-	default: {
-		result << "=";
-		Expression* expression = stmt->getExpression();
-		if(expression)
-			expression->accept(*this);
-	}
+	switch(stmt.getOperation()) {
+		case Expression::Increment:
+			result << "++";
+			break;
+		case Expression::Decrement:
+			result << "--";
+			break;
+		default: {
+			result << "=";
+			Expression* expression = stmt.getExpression();
+			if(expression)
+				expression->accept(*this);
+		}
 	}
 
 	result << ";\n";
 }
 
-void TreePrinter::visit(VectorExpression* exp)
+void TreePrinter::visit(const VectorExpression& exp)
 {
 	result << "[";
-	QList<Expression*> children = exp->getChildren();
+	QList<Expression*> children = exp.getChildren();
 	OnceOnly first;
-	foreach(Expression* e,children) {
+	for(Expression* e: children) {
 		if(!first())
 			result << ",";
 		e->accept(*this);
@@ -298,63 +309,63 @@ void TreePrinter::visit(VectorExpression* exp)
 	result << "]";
 }
 
-void TreePrinter::visit(RangeExpression* exp)
+void TreePrinter::visit(const RangeExpression& exp)
 {
 	result << "[";
-	exp->getStart()->accept(*this);
+	exp.getStart()->accept(*this);
 
 	result << ":";
-	Expression* step = exp->getStep();
+	Expression* step = exp.getStep();
 	if(step) {
 		step->accept(*this);
 		result << ":";
 	}
 
-	exp->getFinish()->accept(*this);
+	exp.getFinish()->accept(*this);
 	result << "]";
 }
 
-void TreePrinter::visit(UnaryExpression* exp)
+void TreePrinter::visit(const UnaryExpression& exp)
 {
-	QString op = exp->getOpString();
-	bool p = exp->postFix();
+	QString op = exp.getOpString();
+	bool p = exp.postFix();
 	if(!p)
 		result << op;
-	exp->getExpression()->accept(*this);
+	exp.getExpression()->accept(*this);
 	if(p)
 		result << op;
 }
 
-void TreePrinter::visit(ReturnStatement* stmt)
+void TreePrinter::visit(const ReturnStatement& stmt)
 {
 	result << "return ";
-	stmt->getExpression()->accept(*this);
+	stmt.getExpression()->accept(*this);
 	result << ";\n";
 }
 
-void TreePrinter::visit(TernaryExpression* exp)
+void TreePrinter::visit(const TernaryExpression& exp)
 {
 	result << "(";
-	exp->getCondition()->accept(*this);
+	exp.getCondition()->accept(*this);
 	result << "?";
-	exp->getTrueExpression()->accept(*this);
+	exp.getTrueExpression()->accept(*this);
 	result << ":";
-	exp->getFalseExpression()->accept(*this);
+	exp.getFalseExpression()->accept(*this);
 	result << ")";
 }
 
-void TreePrinter::visit(Invocation* stmt)
+void TreePrinter::visit(const Invocation& stmt)
 {
-	QString nameSpace = stmt->getNamespace();
+	QString nameSpace = stmt.getNamespace();
 	if(!nameSpace.isEmpty()) {
 		result << nameSpace;
 		result << "::";
 	}
-	result << stmt->getName();
+	result << stmt.getName();
 	result << "(";
-	QList<Argument*> arguments = stmt->getArguments();
+	QList<Argument*> arguments = stmt.getArguments();
 	OnceOnly first;
-	foreach(Argument* a,arguments) {
+	for(Argument* a: arguments) {
 		if(!first())
 			result << ",";
 		a->accept(*this);
@@ -362,26 +373,37 @@ void TreePrinter::visit(Invocation* stmt)
 	result << ")";
 }
 
-void TreePrinter::visit(Callback*)
+void TreePrinter::visit(Callback&)
 {
 }
 
-void TreePrinter::visit(ModuleImport* decl)
+void TreePrinter::printCodeDoc(const QString& desc, const QList<Parameter*>& parameters)
+{
+	if(!desc.isEmpty()) {
+		result << "/** " << desc << "\n";
+		for(Parameter* p: parameters) {
+			result << " * @param " << p->getName() << " " << p->getDescription() << "\n";
+		}
+		result << " */\n";
+	}
+}
+
+void TreePrinter::visit(const ModuleImport& decl)
 {
 	result << "import <";
-	result << decl->getImport();
+	result << decl.getImport();
 	result << ">";
-	QString name = decl->getName();
+	QString name = decl.getName();
 	if(!name.isEmpty()) {
 		result << " as ";
 		result << name;
 	}
-	QList<Parameter*> parameters = decl->getParameters();
+	QList<Parameter*> parameters = decl.getParameters();
 	int s = parameters.size();
 	if(s>0) {
 		result << "(";
 		OnceOnly first;
-		foreach(Parameter* p,parameters) {
+		for(Parameter* p: parameters) {
 			if(!first())
 				result << ",";
 			p->accept(*this);
@@ -392,12 +414,12 @@ void TreePrinter::visit(ModuleImport* decl)
 	result << ";\n";
 }
 
-void TreePrinter::visit(ScriptImport* decl)
+void TreePrinter::visit(const ScriptImport& decl)
 {
 	result << "use <";
-	result << decl->getImport();
+	result << decl.getImport();
 	result << ">";
-	QString name = decl->getNamespace();
+	QString name = decl.getNamespace();
 	if(!name.isEmpty()) {
 		result << " as ";
 		result << name;
@@ -406,49 +428,53 @@ void TreePrinter::visit(ScriptImport* decl)
 	result << "\n";
 }
 
-void TreePrinter::visit(Literal* lit)
+void TreePrinter::visit(const Literal& lit)
 {
-	result << lit->getValueString();
+	result << lit.getValueString();
 }
 
-void TreePrinter::visit(Variable* var)
+void TreePrinter::visit(const Variable& var)
 {
-	switch(var->getStorage()) {
-	case Variable::Const:
-		result << "const ";
-		break;
-	case Variable::Param:
-		result << "param ";
-		break;
-	default:
-		break;
+	switch(var.getStorage()) {
+		case Variable::Const:
+			result << "const ";
+			break;
+		case Variable::Param:
+			result << "param ";
+			break;
+		default:
+			break;
 	}
 
-	if(var->getStorage()==Variable::Special)
+	if(var.getStorage()==Variable::Special)
 		result << "$";
-	result << var->getName();
+	result << var.getName();
 }
 
-void TreePrinter::visit(CodeDoc* cd)
+void TreePrinter::visit(const CodeDoc& cd)
 {
-	result << cd->getName() << " " << cd->getText() << "\n";
+	result << cd.getName() << " " << cd.getText() << "\n";
 }
 
-void TreePrinter::visit(Script* sc)
+void TreePrinter::visit(Script& sc)
 {
-	foreach(Declaration* d, sc->getDeclarations())
+	for(Declaration* d: sc.getDeclarations())
 		d->accept(*this);
 
-	foreach(QList<CodeDoc*> docs, sc->getDocumentation()) {
+	for(QList<CodeDoc*> docs: sc.getDocumentation()) {
 		result << "/**\n";
 
-		foreach(CodeDoc* doc, docs)
+		for(CodeDoc* doc: docs)
 			doc->accept(*this);
 
 		result << "*/\n";
 	}
 }
 
-void TreePrinter::visit(Product*)
+void TreePrinter::visit(Product&)
+{
+}
+
+void TreePrinter::visit(const ComplexExpression&)
 {
 }

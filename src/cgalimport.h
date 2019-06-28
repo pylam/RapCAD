@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#if USE_CGAL
+#ifdef USE_CGAL
 #ifndef CGALIMPORT_H
 #define CGALIMPORT_H
 
@@ -28,13 +28,16 @@ class CGALImport
 {
 	Q_DECLARE_TR_FUNCTIONS(CGALImport)
 public:
-	CGALImport(Reporter*);
+	explicit CGALImport(Reporter&);
 	Primitive* import(QString);
 private:
-	Reporter* reporter;
+	Reporter& reporter;
 	Primitive* importOFF(QFileInfo);
 	Primitive* importSTL(QFileInfo);
 	Primitive* importRCAD(QFileInfo);
+	Primitive* import3MF(QFileInfo);
+	Primitive* importAMF(QFileInfo);
+	Primitive* importNEF(QFileInfo);
 };
 
 #endif // CGALIMPORT_H

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#ifdef USE_CGAL
 #ifndef CGALVOLUME_H
 #define CGALVOLUME_H
 
@@ -24,14 +24,15 @@
 class CGALVolume
 {
 public:
-	CGALVolume(CGAL::Cuboid3,CGAL::FT,CGAL::Point3);
+	CGALVolume(CGAL::Cuboid3,CGAL::Scalar,CGAL::Point3);
 	CGAL::Point3 getCenter() const;
-	CGAL::FT getSize() const;
+	CGAL::Scalar getSize() const;
 	CGAL::Cuboid3 getBounds() const;
 private:
 	CGAL::Cuboid3 bounds;
-	CGAL::FT size;
+	CGAL::Scalar size;
 	CGAL::Point3 centroid;
 };
 
 #endif // CGALVOLUME_H
+#endif

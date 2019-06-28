@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,36 +22,38 @@
 #include "vectorvalue.h"
 #include "numbervalue.h"
 
-MultMatrixModule::MultMatrixModule() : Module("multmatrix")
+MultMatrixModule::MultMatrixModule(Reporter& r) : Module(r,"multmatrix")
 {
-	addParameter("matrix");
+	addDescription(tr("Multiplies its children with the given 4 by 4 affine transformation matrix."));
+	addParameter("matrix",tr("The 4 by 4 affine transformation matrix"));
 }
 
-Node* MultMatrixModule::evaluate(Context* ctx)
+Node* MultMatrixModule::evaluate(const Context& ctx) const
 {
-	VectorValue* matrixVec=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
+	auto* matrixVec=dynamic_cast<VectorValue*>(getParameterArgument(ctx,0));
 
-	TransformationNode* n=new TransformationNode();
-	n->setChildren(ctx->getInputNodes());
+	auto* n=new TransformationNode();
+	n->setChildren(ctx.getInputNodes());
 
 	if(!matrixVec)
 		return n;
 
-	int index=0;
-	foreach(Value* colVal,matrixVec->getChildren()) {
-		VectorValue* rowVal=dynamic_cast<VectorValue*>(colVal);
-		if(rowVal) {
-			foreach (Value* valueVal, rowVal->getChildren()) {
-				NumberValue* value=dynamic_cast<NumberValue*>(valueVal);
-				if(value) {
-					n->matrix[index]=value->getNumber();
-				}
-				index++;
-				if(index>16)
-					return n;
-			}
+	auto* matrix=new TransformMatrix();
+
+	int i=0,j=0;
+	for(Value* rowVal: matrixVec->getChildren()) {
+		auto* row=dynamic_cast<VectorValue*>(rowVal);
+		if(!row) continue;
+		j=0;
+		for(Value* colVal: row->getChildren()) {
+			auto* col=dynamic_cast<NumberValue*>(colVal);
+			if(!col) continue;
+			matrix->setValue(i,j,col->getNumber());
+			if(++j >= 4) break;
 		}
+		if(++i >= 4) break;
 	}
 
+	n->setMatrix(matrix);
 	return n;
 }

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ class DecomposeNode : public Node
 {
 public:
 	DecomposeNode();
-	void accept(NodeVisitor&);
+	void accept(NodeVisitor&) override;
 };
 
 #endif // DECOMPOSENODE_H

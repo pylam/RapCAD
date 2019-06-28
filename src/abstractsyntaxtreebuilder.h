@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,12 +31,13 @@
 #include "instance.h"
 #include "script.h"
 #include "invocation.h"
+#include "abstracttokenbuilder.h"
 
 class AbstractSyntaxTreeBuilder
 {
 public:
 	virtual ~AbstractSyntaxTreeBuilder() {}
-	virtual void buildFileLocation(QString)=0;
+	virtual void buildFileLocation(QDir)=0;
 	virtual void buildScript(Declaration*)=0;
 	virtual void buildScript(QList<Declaration*>*)=0;
 	virtual void buildScript(QList<CodeDoc*>*)=0;
@@ -93,9 +94,10 @@ public:
 	virtual Argument* buildArgument(Variable*,Expression*)=0;
 	virtual Expression* buildLiteral()=0;
 	virtual Expression* buildLiteral(bool)=0;
-	virtual Expression* buildLiteral(decimal value)=0;
-	virtual Expression* buildLiteral(QString* value)=0;
-	virtual Variable* buildVariable(QString* name)=0;
+	virtual Expression* buildLiteral(decimal*)=0;
+	virtual Expression* buildLiteral(decimal*,QString*)=0;
+	virtual Expression* buildLiteral(QString*)=0;
+	virtual Variable* buildVariable(QString*)=0;
 	virtual Expression* buildVariable(Variable*)=0;
 	virtual Variable* buildVariable(QString*,Variable::Storage_e)=0;
 	virtual Expression* buildExpression(Expression*,QString*)=0;
@@ -109,10 +111,10 @@ public:
 	virtual QList<Expression*>* buildVector(QList<Expression*>*,unsigned int,Expression*)=0;
 	virtual Expression* buildRange(Expression*,Expression*)=0;
 	virtual Expression* buildRange(Expression*,Expression*,Expression*)=0;
+	virtual Expression* buildComplex(Expression*,Expression*,Expression*,Expression*)=0;
 	virtual Invocation* buildInvocation(QString*,QList<Argument*>*)=0;
 	virtual Invocation* buildInvocation(QString*,Invocation*)=0;
-
-	virtual Script* getResult() const=0;
+	virtual void reportSyntaxError(QString)=0;
 };
 
 #endif // ABSTRACTSYNTAXTREEBUILDER_H

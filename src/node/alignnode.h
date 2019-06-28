@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -38,11 +38,12 @@ public:
 
 	bool getCenter() const;
 	void setCenter(bool value);
+	void setCenterVertical();
 
 	QList<Face_t> getAlign() const;
-	void setAlign(const QList<Face_t> &value);
+	void setAlign(const QList<Face_t>& value);
 
-	void accept(NodeVisitor&);
+	void accept(NodeVisitor&) override;
 private:
 	QList<Face_t> align;
 	bool center;

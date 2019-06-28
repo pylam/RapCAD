@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
 
 #include "variable.h"
 
-Variable::Variable()
+Variable::Variable() :
+	storage(Variable::Var)
 {
-	storage=Variable::Var;
 }
 
 Variable::~Variable()
@@ -29,25 +29,25 @@ Variable::~Variable()
 
 QString Variable::getName() const
 {
-	return this->name;
+	return name;
 }
 
-void Variable::setName(QString name)
+void Variable::setName(const QString& n)
 {
-	this->name = name;
+	name = n;
 }
 
 void Variable::setStorage(Storage_e c)
 {
-	this->storage = c;
+	storage = c;
 }
 
 Variable::Storage_e Variable::getStorage() const
 {
-	return this->storage;
+	return storage;
 }
 
 void Variable::accept(TreeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 #include "simpletextbuilder.h"
 #include "polyhedron.h"
 
-QMap<QChar,SimpleTextBuilder::Letter>* SimpleTextBuilder::characters=NULL;
+QMap<QChar,SimpleTextBuilder::Letter>* SimpleTextBuilder::characters=nullptr;
 
-SimpleTextBuilder::SimpleTextBuilder()
+SimpleTextBuilder::SimpleTextBuilder() : location(0,0,0)
 {
 	if(!characters) {
 		characters=new QMap<QChar,Letter>();
@@ -32,12 +32,12 @@ SimpleTextBuilder::SimpleTextBuilder()
 		stroke=Stroke();
 		stroke.append(Point(0.25,1.6,0.0));
 		stroke.append(Point(0.75,1.6,0.0));
-		stroke.append(Point(1.0 ,1.4,0.0));
-		stroke.append(Point(1.0 ,0.2,0.0));
+		stroke.append(Point(1.0,1.4,0.0));
+		stroke.append(Point(1.0,0.2,0.0));
 		stroke.append(Point(0.75,0.0,0.0));
 		stroke.append(Point(0.25,0.0,0.0));
-		stroke.append(Point(0.0 ,0.2,0.0));
-		stroke.append(Point(0.0 ,1.4,0.0));
+		stroke.append(Point(0.0,0.2,0.0));
+		stroke.append(Point(0.0,1.4,0.0));
 		stroke.append(Point(0.25,1.6,0.0));
 		zero.append(stroke);
 		stroke=Stroke();
@@ -49,14 +49,14 @@ SimpleTextBuilder::SimpleTextBuilder()
 		Letter one;
 		stroke=Stroke();
 		stroke.append(Point(0.25,1.2,0.0));
-		stroke.append(Point(0.5 ,1.6,0.0));
-		stroke.append(Point(0.5 ,0.0,0.0));
+		stroke.append(Point(0.5,1.6,0.0));
+		stroke.append(Point(0.5,0.0,0.0));
 		one.append(stroke);
 		characters->insert('1',one);
 
 		Letter two;
 		stroke=Stroke();
-		stroke.append(Point(0.0 ,1.4,0.0));
+		stroke.append(Point(0.0,1.4,0.0));
 		stroke.append(Point(0.25,1.6,0.0));
 		stroke.append(Point(0.75,1.6,0.0));
 		stroke.append(Point(1.0, 1.4,0.0));
@@ -105,7 +105,7 @@ SimpleTextBuilder::SimpleTextBuilder()
 		stroke.append(Point(1.0, 0.2,0.0));
 		stroke.append(Point(0.75,0.0,0.0));
 		stroke.append(Point(0.25,0.0,0.0));
-		stroke.append(Point(0.0 ,0.2,0.0));
+		stroke.append(Point(0.0,0.2,0.0));
 		five.append(stroke);
 		characters->insert('5',five);
 
@@ -188,7 +188,7 @@ SimpleTextBuilder::SimpleTextBuilder()
 	}
 }
 
-void SimpleTextBuilder::setText(QString t)
+void SimpleTextBuilder::setText(const QString& t)
 {
 	text=t;
 }
@@ -198,26 +198,24 @@ decimal SimpleTextBuilder::getHeight()
 	return 1.6;
 }
 
-void SimpleTextBuilder::setLocation(Point p)
+void SimpleTextBuilder::setLocation(const Point& p)
 {
 	location=p;
 }
 
 Primitive* SimpleTextBuilder::buildPrimitive() const
 {
-	Polyhedron* ph=new Polyhedron();
-	ph->setType(Primitive::Skeleton);
+	auto* ph=new Polyhedron();
+	ph->setType(Primitive::Lines);
 
 	int n=0;
-	decimal x,y,z;
-	location.getXYZ(x,y,z);
-	foreach(QChar c, text) {
+	decimal x=location.x(),y=location.y(),z=location.z();
+	for(QChar c: text) {
 		Letter ch=characters->value(c);
-		foreach(Stroke p, ch) {
+		for(Stroke p: ch) {
 			Polygon* pg=ph->createPolygon();
-			foreach(Point pt, p) {
-				decimal cx,cy,cz;
-				pt.getXYZ(cx,cy,cz);
+			for(const auto& pt: p) {
+				decimal cx=pt.x(),cy=pt.y(),cz=pt.z();
 				ph->createVertex(Point(cx+x,cy+y,cz+z));
 				pg->append(n++);
 			}

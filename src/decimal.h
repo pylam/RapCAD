@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,29 +20,26 @@
 #define DECIMAL_H
 
 #include <QString>
-#include <math.h>
 
+#ifdef USE_CGAL
+#include "cgal.h"
+typedef CGAL::Scalar decimal;
+typedef CGAL::Point3 Point;
+#else
 typedef double decimal;
+#endif
 
-template< class T >
-inline decimal to_decimal(T n)
-{
-	return to_double(n);
-}
+QString to_string(const decimal&);
+decimal to_decimal(const QString&, bool* ok=nullptr);
+int to_integer(const decimal&);
+bool to_boolean(const decimal&);
+decimal parse_rational(const QString&,bool* ok=nullptr);
+decimal parse_numberexp(const QString&,bool* ok=nullptr);
 
-template<class NT>
-inline decimal inexact_sqrt(NT const& n)
-{
-	return sqrt(to_decimal(n));
-}
-
-inline decimal to_decimal(QString s,bool* ok)
-{
-	return s.toDouble(ok);
-}
-
-QString to_string(const decimal);
-QString to_string(const decimal,const int);
-QString to_string(const decimal,const int,const bool);
+#ifdef USE_CGAL
+void to_glcoord(const Point&,float&,float&,float&);
+QString to_rational(const decimal&);
+CGAL::Gmpfr to_gmpfr(const decimal&);
+#endif
 
 #endif // DECIMAL_H

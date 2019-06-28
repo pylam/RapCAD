@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,25 +19,25 @@
 #include "strategy.h"
 #include "invocation.h"
 
-Strategy::Strategy(QTextStream& s) : output(s)
+Strategy::Strategy(Reporter& r) :
+	reporter(r),
+	output(r.output)
 {
-	reporter=new Reporter(output);
 }
 
 Strategy::~Strategy()
 {
-	delete reporter;
 }
 
-Callback* Strategy::addCallback(QString name,Script* s,QList<Argument*> args)
+Callback* Strategy::addCallback(const QString &name, Script& s, const QList<Argument*>& args)
 {
-	Callback* c=new Callback();
-	Invocation* l=new Invocation();
+	auto* c=new Callback();
+	auto* l=new Invocation();
 	if(args.length()>0)
 		l->setArguments(args);
 	l->setName(name);
 	c->setExpression(l);
-	s->appendDeclaration(c);
+	s.appendDeclaration(c);
 
 	return c;
 }

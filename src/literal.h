@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,13 +28,15 @@ public:
 	Literal();
 	void setValue(bool);
 	void setValue(decimal);
-	void setValue(QString);
-	QString getValueString() const;
+	void setValue(const QString&);
+	void setUnit(const QString&);
 
+	QString getValueString() const;
 	Value* getValue() const;
 
-	void accept(TreeVisitor&);
+	void accept(TreeVisitor&) override;
 private:
+
 	enum DataType {
 		Undef,
 		Boolean,
@@ -46,6 +48,7 @@ private:
 	decimal number;
 	QString text;
 	DataType type;
+	decimal unit;
 };
 
 #endif // LITERAL_H

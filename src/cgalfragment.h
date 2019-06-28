@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,17 +16,20 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef USE_CGAL
 #ifndef CGALFRAGMENT_H
 #define CGALFRAGMENT_H
 
 #include "cgal.h"
+
 #include "fragment.h"
 
 class CGALFragment : public Fragment
 {
 public:
-	CGALFragment(const Fragment);
-	int getFragments(CGAL::FT);
+	explicit CGALFragment(const Context&);
+	int getFragments(const CGAL::Scalar&) override;
 };
 
 #endif // CGALFRAGMENT_H
+#endif

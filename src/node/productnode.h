@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@ class ProductNode : public Node
 public:
 	ProductNode();
 	void setPrimitive(Primitive*);
-	Primitive* getPrimitive();
-	void accept(NodeVisitor&);
+	Primitive* getPrimitive() const;
+	void accept(NodeVisitor&) override;
 private:
 	Primitive* primitive;
 };

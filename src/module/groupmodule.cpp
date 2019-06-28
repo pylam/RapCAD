@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,15 +17,17 @@
  */
 
 #include "groupmodule.h"
+#include "context.h"
 #include "node/groupnode.h"
 
-GroupModule::GroupModule() : Module("group")
+GroupModule::GroupModule(Reporter& r) : Module(r,"group")
 {
+	addDescription(tr("Groups its children into single geometry."));
 }
 
-Node *GroupModule::evaluate(Context* ctx)
+Node* GroupModule::evaluate(const Context& ctx) const
 {
-	GroupNode* d = new GroupNode();
-	d->setChildren(ctx->getInputNodes());
+	auto* d = new GroupNode();
+	d->setChildren(ctx.getInputNodes());
 	return d;
 }

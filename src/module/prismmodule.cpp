@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,40 +16,48 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "prismmodule.h"
 #include "numbervalue.h"
+#include "rmath.h"
 
-PrismModule::PrismModule() : PrimitiveModule("prism")
+PrismModule::PrismModule(Reporter& r) : PrimitiveModule(r,"prism")
 {
-	addParameter("height");
-	addParameter("sides");
-	addParameter("apothem");
-	addParameter("center");
+	addDescription(tr("Constructs a regular prism. It will be placed centered on the xy plane."));
+	addParameter("height",tr("The height of the prism."));
+	addParameter("sides",tr("The number of size to the prism."));
+	addParameter("apothem",tr("The radius from the center to the outer faces of the prism."));
+	addParameter("center",tr("Specifies whether to center the prism vertically along the z axis."));
 }
 
-Node* PrismModule::evaluate(Context* ctx)
+Node* PrismModule::evaluate(const Context& ctx) const
 {
-	NumberValue* heightVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
+	auto* heightVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,0));
 	decimal h=1.0;
 	if(heightVal)
 		h=heightVal->getNumber();
 
 	int s=3;
-	NumberValue* sidesVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
+	auto* sidesVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,1));
 	if(sidesVal)
-		s=sidesVal->getNumber();
+		s=sidesVal->toInteger();
+
+	auto* pn=new PrimitiveNode(reporter);
+	Primitive* p=pn->createPrimitive();
+	pn->setChildren(ctx.getInputNodes());
+
+	if(h==0||s<=0)
+		return pn;
 
 	decimal r=1.0,a=1.0;
-	NumberValue* apothemVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,2));
+	auto* apothemVal = dynamic_cast<NumberValue*>(getParameterArgument(ctx,2));
 	if(apothemVal) {
 		a=apothemVal->getNumber();
-		r=a/cos(M_PI/s);
+		r=a/r_cos(r_pi()/s);
 	} else {
-		NumberValue* radiusVal = dynamic_cast<NumberValue*>(ctx->getArgument(2,"radius"));
+		NumberValue* radiusVal = dynamic_cast<NumberValue*>(ctx.getArgument(2,"radius"));
 		if(radiusVal) {
 			r=radiusVal->getNumber();
-			a=r*cos(M_PI/s);
+			a=r*r_cos(r_pi()/s);
 		}
 	}
 
@@ -65,24 +73,22 @@ Node* PrismModule::evaluate(Context* ctx)
 	QList<Point> p1=getPolygon(a,r,s,z1);
 	QList<Point> p2=getPolygon(a,r,s,z2);
 
-	PrimitiveNode* p = new PrimitiveNode();
-
 	if(r > 0) {
 		Polygon* pg;
 		int n=0;
 		pg=p->createPolygon();
-		foreach(Point pt,p1) {
+		for(const auto& pt: p1) {
 			p->createVertex(pt);
 			pg->append(n++);
 		}
 
 		pg=p->createPolygon();
-		foreach(Point pt,p2) {
+		for(const auto& pt: p2) {
 			p->createVertex(pt);
 			pg->prepend(n++);
 		}
 
-		for(int i=0; i<s; i++) {
+		for(auto i=0; i<s; ++i) {
 			int j=(i+1)%s;
 			int k=i+s;
 			int l=j+s;
@@ -95,11 +101,11 @@ Node* PrismModule::evaluate(Context* ctx)
 	}
 
 	if(center) {
-		AlignNode* n=new AlignNode();
-		n->setCenter(true);
-		n->addChild(p);
-		return n;
+		auto* an=new AlignNode();
+		an->setCenterVertical();
+		an->addChild(pn);
+		return an;
 	}
 
-	return p;
+	return pn;
 }

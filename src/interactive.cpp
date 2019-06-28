@@ -1,3 +1,21 @@
+/*
+ *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
+ *   Copyright (C) 2010-2019 Giles Bathgate
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "interactive.h"
 #include "treeevaluator.h"
 #include "script.h"
@@ -10,13 +28,15 @@ namespace readline
 }
 #endif
 
-Interactive::Interactive(QTextStream& s,QObject* parent) : QObject(parent),Strategy(s)
+Interactive::Interactive(Reporter& r,QObject* parent) :
+	QObject(parent),
+	Strategy(r)
 {
 }
 
-bool Interactive::isExpression(QString s)
+bool Interactive::isExpression(const QString& s)
 {
-	TokenBuilder t(NULL,s,false);
+	TokenBuilder t(s);
 	int i;
 	while((i=t.nextToken())) {
 		if(i==';'||i=='}') {
@@ -26,27 +46,28 @@ bool Interactive::isExpression(QString s)
 	return true;
 }
 
-void Interactive::execCommand(QString s)
+void Interactive::execCommand(const QString& str)
 {
+	QString s(str);
 	if(isExpression(s)) {
 		s=QString("writeln(%1);").arg(s);
 		/* Use a kludge factor so that the reporter doesn't include the 'write('
 		 * characters in its 'at character' output */
-		reporter->setKludge(-8);
+		reporter.setKludge(-8);
 	} else {
-		reporter->setKludge(0);
+		reporter.setKludge(0);
 	}
 
-	Script* sc=parse(s,reporter,false);
+	Script sc(reporter);
+	sc.parse(s);
 	TreeEvaluator e(reporter);
-	sc->accept(e);
+	sc.accept(e);
 	output.flush();
-	delete sc;
 }
 
 #define PROMPT "\u042F: "
 
-QString Interactive::getPrompt()
+QString Interactive::getPrompt() const
 {
 	return PROMPT;
 }
@@ -59,8 +80,8 @@ int Interactive::evaluate()
 	do {
 		c=readline::readline(prompt);
 		execCommand(c);
-	} while(c!=NULL);
+	} while(c!=nullptr);
 	output << endl;
-	return EXIT_SUCCESS;
 #endif
+	return EXIT_SUCCESS;
 }

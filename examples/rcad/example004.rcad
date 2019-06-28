@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ module cup() {
 difference(){
   box(30);
   translate([0,0,3])
-    scale([0.8,0.8,1],[10,10,10])box(30); //scale with reference point
+    scale([0.8,0.8,1],[-10,-10,-10])box(30); //scale with reference point
 }
 handle();
 module handle(){

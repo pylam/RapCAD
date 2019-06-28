@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,21 +24,21 @@ ModuleScope::ModuleScope()
 
 ModuleScope::~ModuleScope()
 {
-	foreach(Declaration* d,declarations)
+	for(Declaration* d: declarations)
 		delete d;
 }
 
-void ModuleScope::setDeclarations(QList<Declaration*> decls)
+void ModuleScope::setDeclarations(const QList<Declaration*>& decls)
 {
-	this->declarations = decls;
+	declarations = decls;
 }
 
 QList<Declaration*> ModuleScope::getDeclarations() const
 {
-	return this->declarations;
+	return declarations;
 }
 
 void ModuleScope::accept(TreeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,7 +18,9 @@
 
 #include "slicenode.h"
 
-SliceNode::SliceNode()
+SliceNode::SliceNode() :
+	height(0),
+	thickness(0)
 {
 }
 
@@ -27,7 +29,7 @@ void SliceNode::setHeight(decimal h)
 	height=h;
 }
 
-decimal SliceNode::getHeight()
+decimal SliceNode::getHeight() const
 {
 	return height;
 }
@@ -37,12 +39,12 @@ void SliceNode::setThickness(decimal t)
 	thickness=t;
 }
 
-decimal SliceNode::getThickness()
+decimal SliceNode::getThickness() const
 {
 	return thickness;
 }
 
 void SliceNode::accept(NodeVisitor& v)
 {
-	v.visit(this);
+	v.visit(*this);
 }

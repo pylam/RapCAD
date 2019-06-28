@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,43 +16,24 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
+#include "rmath.h"
 #include "primitivemodule.h"
-#include "tau.h"
 #include "context.h"
 #include "numbervalue.h"
 
-PrimitiveModule::PrimitiveModule(const QString n) : Module(n)
+PrimitiveModule::PrimitiveModule(Reporter& r, const QString &n) : Module(r,n)
 {
 }
 
-Fragment PrimitiveModule::getSpecialVariables(Context* ctx)
-{
-	decimal fn=0.0;
-	decimal fs=2.0;
-	decimal fa=12.0;
-	NumberValue* fnVal=dynamic_cast<NumberValue*>(ctx->getArgumentSpecial("fn"));
-	if(fnVal)
-		fn=fnVal->getNumber();
-	NumberValue* fsVal=dynamic_cast<NumberValue*>(ctx->getArgumentSpecial("fs"));
-	if(fsVal)
-		fs=fsVal->getNumber();
-	NumberValue* faVal=dynamic_cast<NumberValue*>(ctx->getArgumentSpecial("fa"));
-	if(faVal)
-		fa=faVal->getNumber();
-
-	return Fragment(fn,fs,fa);
-}
-
-QList<Point> PrimitiveModule::getCircle(decimal r, decimal f, decimal z)
+QList<Point> PrimitiveModule::getCircle(const decimal& r,const decimal& f,const decimal& z) const
 {
 	QList<Point> circle;
-	for(int i=0; i<f; i++) {
-		decimal phi = (M_TAU*i) / f;
+	for(auto i=0; i<f; ++i) {
+		decimal phi = (r_tau()*i) / f;
 		decimal x,y;
 		if(r > 0) {
-			x = r*cos(phi);
-			y = r*sin(phi);
+			x = r*r_cos(phi);
+			y = r*r_sin(phi);
 		} else {
 			x=0;
 			y=0;
@@ -64,43 +45,43 @@ QList<Point> PrimitiveModule::getCircle(decimal r, decimal f, decimal z)
 	return circle;
 }
 
-QList<Point> PrimitiveModule::getPolygon(decimal a,decimal r, decimal n, decimal z)
+QList<Point> PrimitiveModule::getPolygon(const decimal& a,const decimal& r,const decimal& n,const decimal& z) const
 {
 	QList<Point> poly;
 	if(n==6) {
 		//TODO modify this to cater for all even values of n
 		decimal x=0,y=0;
-		decimal s2=r*sin(M_PI/n);
-		for(int i=0; i<n; i++) {
+		decimal s2=r*r_sin(r_pi()/n);
+		for(auto i=0; i<n; ++i) {
 			switch(i) {
-			case 0: {
-				y=a;
-				x=-s2;
-				break;
-			}
-			case 1: {
-				x=s2;
-				break;
-			}
-			case 2: {
-				y=0;
-				x=r;
-				break;
-			}
-			case 3: {
-				y=-a;
-				x=s2;
-				break;
-			}
-			case 4: {
-				x=-s2;
-				break;
-			}
-			case 5: {
-				y=0;
-				x=-r;
-				break;
-			}
+				case 0: {
+					y=a;
+					x=-s2;
+					break;
+				}
+				case 1: {
+					x=s2;
+					break;
+				}
+				case 2: {
+					y=0;
+					x=r;
+					break;
+				}
+				case 3: {
+					y=-a;
+					x=s2;
+					break;
+				}
+				case 4: {
+					x=-s2;
+					break;
+				}
+				case 5: {
+					y=0;
+					x=-r;
+					break;
+				}
 			}
 			poly.append(Point(x,y,z));
 		}

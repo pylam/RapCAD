@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
 #define UNIONMODULE_H
 
 #include "module.h"
-#include "context.h"
 
 class UnionModule : public Module
 {
+	Q_DECLARE_TR_FUNCTIONS(UnionModule)
 public:
-	UnionModule();
-	Node* evaluate(Context*);
+	explicit UnionModule(Reporter&);
+	Node* evaluate(const Context&) const override;
+	static Node* createUnion(const QList<Node*>&);
 };
 
 #endif // UNIONMODULE_H

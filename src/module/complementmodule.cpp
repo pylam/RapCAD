@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
 #include "node/complementnode.h"
 #include "context.h"
 
-ComplementModule::ComplementModule() : Module("complement")
+ComplementModule::ComplementModule(Reporter& r) : Module(r,"complement")
 {
+	addDescription(tr("Creates the boolean complement of its children."));
 }
 
-Node* ComplementModule::evaluate(Context* ctx)
+Node* ComplementModule::evaluate(const Context& ctx) const
 {
-	ComplementNode* n=new ComplementNode();
-	n->setChildren(ctx->getInputNodes());
+	auto* n=new ComplementNode();
+	n->setChildren(ctx.getInputNodes());
 	return n;
 }

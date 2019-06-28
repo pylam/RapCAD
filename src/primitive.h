@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,20 +21,25 @@
 
 #include "point.h"
 #include "polygon.h"
+#include "transformmatrix.h"
 
 class Primitive
 {
 public:
 	enum Primitive_t {
 		Volume,
-		Skeleton,
-		Single
+		Surface,
+		Lines,
+		Points
 	};
 
 	virtual ~Primitive() {}
 	virtual Polygon* createPolygon()=0;
 	virtual void setType(Primitive_t)=0;
-	virtual void createVertex(Point)=0;
+	virtual Primitive_t getType()=0;
+	virtual void setSanitized(bool)=0;
+	virtual bool getSanitized()=0;
+	virtual void createVertex(const Point&)=0;
 	virtual bool overlaps(Primitive*)=0;
 	virtual Primitive* group(Primitive*)=0;
 	virtual Primitive* join(Primitive*)=0;
@@ -44,16 +49,21 @@ public:
 	virtual Primitive* difference(Primitive*)=0;
 	virtual Primitive* symmetric_difference(Primitive*)=0;
 	virtual Primitive* minkowski(Primitive*)=0;
-	virtual Primitive* inset(const decimal)=0;
+	virtual Primitive* inset(const decimal&)=0;
 	virtual Primitive* decompose()=0;
 	virtual Primitive* complement()=0;
+	virtual Primitive* boundary()=0;
 	virtual Primitive* copy()=0;
+	virtual Primitive* triangulate()=0;
+	virtual Primitive* simplify(const decimal&)=0;
+	virtual void transform(TransformMatrix*)=0;
 	virtual bool isEmpty()=0;
 	virtual bool isFullyDimentional()=0;
 	virtual QList<Point> getPoints() const=0;
 	virtual QList<Polygon*> getPolygons() const=0;
 	virtual QList<Primitive*> getChildren()=0;
 	virtual void appendChild(Primitive*)=0;
+	virtual void discrete(int)=0;
 };
 
 #endif // PRIMITIVE_H

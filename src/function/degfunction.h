@@ -1,6 +1,6 @@
 /*
  *   RapCAD - Rapid prototyping CAD IDE (www.rapcad.org)
- *   Copyright (C) 2010-2014 Giles Bathgate
+ *   Copyright (C) 2010-2019 Giles Bathgate
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,9 +23,10 @@
 
 class DegFunction : public Function
 {
+	Q_DECLARE_TR_FUNCTIONS(DegFunction)
 public:
 	DegFunction();
-	Value* evaluate(Context*);
+	Value* evaluate(const Context&) const override;
 };
 
 #endif // DEGFUNCTION_H
